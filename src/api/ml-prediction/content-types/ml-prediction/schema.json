@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ml_predictions",
+  "info": {
+    "singularName": "ml-prediction",
+    "pluralName": "ml-predictions",
+    "displayName": "ML Prediction"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "userId": {
+      "type": "string",
+      "required": true
+    },
+    "predictionType": {
+      "type": "enumeration",
+      "enum": [
+        "purchase",
+        "abandonment",
+        "category_preference",
+        "price_sensitivity"
+      ],
+      "required": true
+    },
+    "confidence": {
+      "type": "decimal",
+      "required": true,
+      "min": 0,
+      "max": 1
+    },
+    "factors": {
+      "type": "json"
+    },
+    "timestamp": {
+      "type": "datetime",
+      "required": true
+    },
+    "modelVersion": {
+      "type": "string"
+    },
+    "processed": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+} 

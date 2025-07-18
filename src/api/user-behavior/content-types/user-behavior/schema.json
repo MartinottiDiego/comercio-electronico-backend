@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_behaviors",
+  "info": {
+    "singularName": "user-behavior",
+    "pluralName": "user-behaviors",
+    "displayName": "User Behavior"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "userId": {
+      "type": "string",
+      "required": true
+    },
+    "sessionId": {
+      "type": "string",
+      "required": true
+    },
+    "action": {
+      "type": "enumeration",
+      "enum": [
+        "view",
+        "add_to_cart",
+        "purchase",
+        "search",
+        "favorite",
+        "abandon"
+      ],
+      "required": true
+    },
+    "productId": {
+      "type": "string"
+    },
+    "categoryId": {
+      "type": "string"
+    },
+    "searchTerm": {
+      "type": "string"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "sessionDuration": {
+      "type": "integer"
+    },
+    "deviceType": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "datetime",
+      "required": true
+    },
+    "metadata": {
+      "type": "json"
+    },
+    "encrypted": {
+      "type": "boolean",
+      "default": false
+    },
+    "anonymized": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+} 
