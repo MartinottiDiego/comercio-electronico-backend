@@ -4,4 +4,11 @@ export default ({ env }) => ({
   app: {
     keys: env.array('APP_KEYS'),
   },
+  admin: {
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'b3b1b45a0716.ngrok-free.app' // dominio ngrok permitido
+    ],
+  },
 });

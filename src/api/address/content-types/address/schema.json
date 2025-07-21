@@ -1,0 +1,113 @@
+{
+  "kind": "collectionType",
+  "collectionName": "addresses",
+  "info": {
+    "singularName": "address",
+    "pluralName": "addresses",
+    "displayName": "Address"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "required": true,
+      "default": "shipping",
+      "enum": [
+        "shipping",
+        "billing",
+        "both"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 50,
+      "required": true
+    },
+    "firstName": {
+      "type": "string",
+      "maxLength": 100,
+      "required": true
+    },
+    "lastName": {
+      "type": "string",
+      "maxLength": 100,
+      "required": true
+    },
+    "company": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "addressLine1": {
+      "type": "string",
+      "maxLength": 255,
+      "required": true
+    },
+    "addressLine2": {
+      "type": "string",
+      "maxLength": 255
+    },
+    "city": {
+      "type": "string",
+      "maxLength": 100,
+      "required": true
+    },
+    "state": {
+      "type": "string",
+      "maxLength": 100,
+      "required": true
+    },
+    "postalCode": {
+      "type": "string",
+      "maxLength": 20,
+      "required": true
+    },
+    "country": {
+      "type": "string",
+      "maxLength": 100,
+      "required": true
+    },
+    "phone": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "email": {
+      "type": "email",
+      "maxLength": 255
+    },
+    "isDefault": {
+      "type": "boolean",
+      "default": false
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "text",
+      "maxLength": 500
+    },
+    "carts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::cart.cart"
+    },
+    "orders": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "addresses"
+    }
+  }
+}
