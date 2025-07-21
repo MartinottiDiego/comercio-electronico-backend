@@ -51,7 +51,12 @@
     },
     "refundStatus": {
       "type": "enumeration",
-      "enum": ["none", "requested", "refunded", "rejected"],
+      "enum": [
+        "none",
+        "requested",
+        "refunded",
+        "rejected"
+      ],
       "default": "none"
     },
     "reviewed": {
@@ -59,4 +64,4 @@
       "default": false
     }
   }
-} 
+}

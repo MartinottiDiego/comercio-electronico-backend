@@ -83,12 +83,6 @@
       "relation": "oneToOne",
       "target": "api::profile.profile"
     },
-    "carts": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::cart.cart",
-      "mappedBy": "user"
-    },
     "orders": {
       "type": "relation",
       "relation": "oneToMany",
