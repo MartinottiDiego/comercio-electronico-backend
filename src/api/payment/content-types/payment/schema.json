@@ -1,0 +1,97 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payments",
+  "info": {
+    "singularName": "payment",
+    "pluralName": "payments",
+    "displayName": "Pago"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "paymentIntentId": {
+      "type": "string",
+      "required": true
+    },
+    "checkoutSessionId": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "currency": {
+      "type": "string",
+      "required": true,
+      "default": "EUR"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "refunded"
+      ],
+      "default": "pending",
+      "required": true
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "stripe",
+        "paypal",
+        "bank_transfer",
+        "cash"
+      ],
+      "default": "stripe",
+      "required": true
+    },
+    "fee": {
+      "type": "decimal"
+    },
+    "netAmount": {
+      "type": "decimal"
+    },
+    "customerName": {
+      "type": "string"
+    },
+    "customerEmail": {
+      "type": "email"
+    },
+    "date": {
+      "type": "datetime",
+      "required": true
+    },
+    "gatewayResponse": {
+      "type": "json"
+    },
+    "errorMessage": {
+      "type": "text"
+    },
+    "metadata": {
+      "type": "json"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "payments"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "payments"
+    },
+    "refunds": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::refund.refund",
+      "mappedBy": "payment"
+    }
+  }
+}
