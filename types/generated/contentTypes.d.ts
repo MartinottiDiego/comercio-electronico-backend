@@ -398,7 +398,6 @@ export interface ApiAddressAddress extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 255;
       }>;
-    carts: Schema.Attribute.Relation<'oneToMany', 'api::cart.cart'>;
     city: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
@@ -469,189 +468,6 @@ export interface ApiAddressAddress extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     users_permissions_user: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
-  };
-}
-
-export interface ApiCartItemCartItem extends Struct.CollectionTypeSchema {
-  collectionName: 'cart_items';
-  info: {
-    displayName: 'Cart Item';
-    pluralName: 'cart-items';
-    singularName: 'cart-item';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  pluginOptions: {
-    i18n: {
-      localized: true;
-    };
-  };
-  attributes: {
-    cart: Schema.Attribute.Relation<'manyToOne', 'api::cart.cart'>;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    currency: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'EUR'>;
-    discount: Schema.Attribute.Decimal &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<0>;
-    locale: Schema.Attribute.String;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::cart-item.cart-item'
-    >;
-    notes: Schema.Attribute.Text &
-      Schema.Attribute.SetMinMaxLength<{
-        maxLength: 500;
-      }>;
-    originalPrice: Schema.Attribute.Decimal &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
-    price: Schema.Attribute.Decimal &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
-    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'> &
-      Schema.Attribute.Required;
-    publishedAt: Schema.Attribute.DateTime;
-    quantity: Schema.Attribute.Integer &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 1;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<1>;
-    selectedOptions: Schema.Attribute.JSON;
-    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
-    total: Schema.Attribute.Decimal &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      >;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
-export interface ApiCartCart extends Struct.CollectionTypeSchema {
-  collectionName: 'carts';
-  info: {
-    displayName: 'Cart';
-    pluralName: 'carts';
-    singularName: 'cart';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  pluginOptions: {
-    i18n: {
-      localized: true;
-    };
-  };
-  attributes: {
-    billing_address: Schema.Attribute.Relation<
-      'oneToOne',
-      'api::address.address'
-    >;
-    cart_items: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::cart-item.cart-item'
-    >;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    currency: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'EUR'>;
-    discount: Schema.Attribute.Decimal &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<0>;
-    expiresAt: Schema.Attribute.DateTime;
-    lastActivity: Schema.Attribute.DateTime & Schema.Attribute.Required;
-    locale: Schema.Attribute.String;
-    localizations: Schema.Attribute.Relation<'oneToMany', 'api::cart.cart'>;
-    metadata: Schema.Attribute.JSON;
-    publishedAt: Schema.Attribute.DateTime;
-    sessionId: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique;
-    shipping: Schema.Attribute.Decimal &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<0>;
-    shipping_address: Schema.Attribute.Relation<
-      'oneToOne',
-      'api::address.address'
-    >;
-    status: Schema.Attribute.Enumeration<
-      ['active', 'abandoned', 'converted', 'expired']
-    > &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'active'>;
-    subtotal: Schema.Attribute.Decimal &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<0>;
-    tax: Schema.Attribute.Decimal &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<0>;
-    total: Schema.Attribute.Decimal &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      > &
-      Schema.Attribute.DefaultTo<0>;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    user: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
     >;
@@ -915,7 +731,6 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::address.address'
     >;
-    cart: Schema.Attribute.Relation<'oneToOne', 'api::cart.cart'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2142,7 +1957,6 @@ export interface PluginUsersPermissionsUser
   attributes: {
     addresses: Schema.Attribute.Relation<'oneToMany', 'api::address.address'>;
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    carts: Schema.Attribute.Relation<'oneToMany', 'api::cart.cart'>;
     confirmationToken: Schema.Attribute.String & Schema.Attribute.Private;
     confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     createdAt: Schema.Attribute.DateTime;
@@ -2204,8 +2018,6 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::address.address': ApiAddressAddress;
-      'api::cart-item.cart-item': ApiCartItemCartItem;
-      'api::cart.cart': ApiCartCart;
       'api::category.category': ApiCategoryCategory;
       'api::ml-prediction.ml-prediction': ApiMlPredictionMlPrediction;
       'api::notification.notification': ApiNotificationNotification;

@@ -93,15 +93,11 @@
       "type": "text",
       "maxLength": 500
     },
-    "carts": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::cart.cart"
-    },
     "orders": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::order.order"
+      "target": "api::order.order",
+      "mappedBy": "shipping_address"
     },
     "users_permissions_user": {
       "type": "relation",

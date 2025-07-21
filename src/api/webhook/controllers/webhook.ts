@@ -66,30 +66,26 @@ export default {
       console.log('Parsed shippingAddress:', shippingAddress);
       console.log('Parsed billingAddress:', billingAddress);
       const userId = metadata.user_id || null;
-      // 3. Crear direcciones en Strapi (si existen)
+      // 3. Usar direcciones existentes en Strapi (no crear nuevas)
       let shippingAddressId = null;
       let billingAddressId = null;
-      if (shippingAddress) {
-        const shippingRes = await strapi.entityService.create('api::address.address', {
-          data: {
-            ...shippingAddress,
-            type: 'shipping',
-            user: userId && !isNaN(Number(userId)) ? Number(userId) : undefined,
-          },
-        });
-        shippingAddressId = shippingRes.id;
-        console.log('Created shipping address id:', shippingAddressId);
+      if (shippingAddress && shippingAddress.id) {
+        try {
+          // Usar directamente el ID de la dirección
+          shippingAddressId = shippingAddress.id;
+          console.log('Using existing shipping address id:', shippingAddressId);
+        } catch (error) {
+          console.log('Error with shipping address:', error);
+        }
       }
-      if (billingAddress) {
-        const billingRes = await strapi.entityService.create('api::address.address', {
-          data: {
-            ...billingAddress,
-            type: 'billing',
-            user: userId && !isNaN(Number(userId)) ? Number(userId) : undefined,
-          },
-        });
-        billingAddressId = billingRes.id;
-        console.log('Created billing address id:', billingAddressId);
+      if (billingAddress && billingAddress.id) {
+        try {
+          // Usar directamente el ID de la dirección
+          billingAddressId = billingAddress.id;
+          console.log('Using existing billing address id:', billingAddressId);
+        } catch (error) {
+          console.log('Error with billing address:', error);
+        }
       }
       // 4. Crear la orden en Strapi
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -119,32 +115,38 @@ export default {
       }
       // Log para depuración
       console.log('orderData to be sent to Strapi:', JSON.stringify(orderData, null, 2));
+      console.log('About to create order...');
       const order = await strapi.entityService.create('api::order.order', orderData);
-      console.log('Created order id:', order.id);
+      console.log('✅ Created order id:', order.id);
       // 5. Crear los order_items
+      console.log('About to create order items...');
       for (const item of lineItems.data) {
         console.log('Creating order_item for:', item);
-        await strapi.entityService.create('api::order-item.order-item', {
+        const orderItemData = {
           data: {
             order: order.id,
-            product: item.price?.product || null,
+            product: null, // No vincular producto de Stripe por ahora
             name: item.description,
             quantity: item.quantity,
             price: item.price?.unit_amount ? item.price.unit_amount / 100 : 0,
             subtotal: item.amount_total ? item.amount_total / 100 : 0,
             // Puedes agregar más campos si lo necesitas
           },
-        });
+        };
+        console.log('Order item data:', JSON.stringify(orderItemData, null, 2));
+        const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
+        console.log('✅ Created order item id:', orderItem.id);
       }
       // 6. Crear el pago en Strapi
-      await strapi.entityService.create('api::payment.payment', {
+      console.log('About to create payment...');
+      const paymentData = {
         data: {
           paymentIntentId: session.payment_intent,
           checkoutSessionId: session.id,
           amount: session.amount_total / 100,
           currency: session.currency,
-          status: 'completed',
-          method: 'stripe',
+          status: 'completed' as 'completed',
+          method: 'stripe' as 'stripe',
           customerName: session.customer_details?.name || '',
           customerEmail: session.customer_email,
           date: new Date().toISOString(),
@@ -152,8 +154,11 @@ export default {
           user: userId && !isNaN(Number(userId)) ? Number(userId) : undefined,
           gatewayResponse: session,
         },
-      });
-      console.log('Order, items, addresses, and payment created successfully');
+      };
+      console.log('Payment data:', JSON.stringify(paymentData, null, 2));
+      const payment = await strapi.entityService.create('api::payment.payment', paymentData);
+      console.log('✅ Created payment id:', payment.id);
+      console.log('🎉 Order, items, addresses, and payment created successfully');
     } catch (error) {
       console.error('Error processing checkout session:', error);
       if (error && error.details && Array.isArray(error.details.errors)) {

@@ -8,6 +8,31 @@ export default {
   async createCheckoutSession(ctx: Context) {
     try {
       const { items, customerEmail, successUrl, cancelUrl, metadata } = ctx.request.body;
+      
+      console.log('[Stripe Controller] Items recibidos:', items);
+      console.log('[Stripe Controller] Metadata recibida:', metadata);
+      
+      // Extraer direcciones del metadata
+      let shippingAddress = null;
+      let billingAddress = null;
+      
+      if (metadata?.shipping_address) {
+        try {
+          shippingAddress = JSON.parse(metadata.shipping_address);
+          console.log('[Stripe Controller] Shipping address:', shippingAddress);
+        } catch (error) {
+          console.error('[Stripe Controller] Error parsing shipping address:', error);
+        }
+      }
+      
+      if (metadata?.billing_address) {
+        try {
+          billingAddress = JSON.parse(metadata.billing_address);
+          console.log('[Stripe Controller] Billing address:', billingAddress);
+        } catch (error) {
+          console.error('[Stripe Controller] Error parsing billing address:', error);
+        }
+      }
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         return ctx.badRequest('Items are required and must be an array');
@@ -21,29 +46,106 @@ export default {
         return ctx.badRequest('Success and cancel URLs are required');
       }
 
+            // Crear o buscar cliente en Stripe
+      let customer;
+      try {
+        // Buscar cliente existente por email
+        const existingCustomers = await stripe.customers.list({
+          email: customerEmail,
+          limit: 1,
+        });
+        
+        if (existingCustomers.data.length > 0) {
+          customer = existingCustomers.data[0];
+          console.log('[Stripe Controller] Cliente existente encontrado:', customer.id);
+        } else {
+          // Crear nuevo cliente
+          customer = await stripe.customers.create({
+            email: customerEmail,
+            name: shippingAddress ? `${shippingAddress.firstName} ${shippingAddress.lastName}` : undefined,
+            phone: shippingAddress?.phone,
+            address: shippingAddress ? {
+              line1: shippingAddress.addressLine1,
+              line2: shippingAddress.addressLine2 || undefined,
+              city: shippingAddress.city,
+              state: shippingAddress.state || undefined,
+              postal_code: shippingAddress.postalCode,
+              country: shippingAddress.country,
+            } : undefined,
+            shipping: shippingAddress ? {
+              name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+              address: {
+                line1: shippingAddress.addressLine1,
+                line2: shippingAddress.addressLine2 || undefined,
+                city: shippingAddress.city,
+                state: shippingAddress.state || undefined,
+                postal_code: shippingAddress.postalCode,
+                country: shippingAddress.country,
+              },
+            } : undefined,
+            metadata: {
+              user_id: metadata?.user_id || '',
+              source: 'strapi-ecommerce',
+            },
+          });
+          console.log('[Stripe Controller] Nuevo cliente creado:', customer.id);
+        }
+      } catch (error) {
+        console.error('[Stripe Controller] Error creando/buscando cliente:', error);
+        // Continuar sin cliente si hay error
+      }
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
-        line_items: items.map((item: any) => ({
-          price_data: {
-            currency: stripeConfig.currency,
-            product_data: {
-              name: item.name,
-              images: item.image ? [item.image] : undefined,
+        line_items: items.map((item: any) => {
+          const productName = item.name || `Producto ${item.productId || item.id}`;
+          const productImage = item.image;
+          const productDescription = item.description;
+          
+          // Verificar si la imagen es accesible públicamente
+          let finalImage = productImage;
+          if (productImage && productImage.includes('127.0.0.1:1337')) {
+            // Si es localhost, intentar usar una imagen por defecto o remover la imagen
+            console.log(`[Stripe Controller] Imagen local detectada: ${productImage}`);
+            // Por ahora, no incluir imagen si es localhost
+            finalImage = undefined;
+          }
+          
+          console.log(`[Stripe Controller] Creando line item para:`, {
+            name: productName,
+            image: finalImage,
+            description: productDescription,
+            price: item.price,
+            quantity: item.quantity
+          });
+          
+          return {
+            price_data: {
+              currency: stripeConfig.currency,
+              product_data: {
+                name: productName,
+                images: finalImage ? [finalImage] : undefined,
+                description: productDescription || undefined,
+              },
+              unit_amount: Math.round(item.price * 100), // Convertir a centavos
             },
-            unit_amount: Math.round(item.price * 100), // Convertir a centavos
-          },
-          quantity: item.quantity,
-        })),
+            quantity: item.quantity,
+          };
+        }),
         mode: 'payment',
         success_url: successUrl,
         cancel_url: cancelUrl,
-        customer_email: customerEmail,
+        customer: customer?.id, // Usar el cliente creado
+        customer_email: customer ? undefined : customerEmail, // Solo usar email si no hay cliente
         metadata: metadata || {},
         allow_promotion_codes: true,
-        billing_address_collection: 'required',
+        // Configurar recolección de direcciones
+        billing_address_collection: 'auto',
         shipping_address_collection: {
-          allowed_countries: ['US', 'CA', 'GB', 'ES', 'DE', 'FR', 'IT'],
+          allowed_countries: ['US', 'CA', 'GB', 'ES', 'DE', 'FR', 'IT', 'AR'],
         },
+        // No crear cliente automáticamente ya que lo creamos manualmente
+        customer_creation: customer ? undefined : 'always',
       });
 
       ctx.body = {

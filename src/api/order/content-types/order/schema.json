@@ -22,6 +22,8 @@
     },
     "status": {
       "type": "enumeration",
+      "required": true,
+      "default": "pending",
       "enum": [
         "pending",
         "confirmed",
@@ -31,21 +33,19 @@
         "cancelled",
         "refunded",
         "failed"
-      ],
-      "default": "pending",
-      "required": true
+      ]
     },
     "paymentStatus": {
       "type": "enumeration",
+      "required": true,
+      "default": "pending",
       "enum": [
         "pending",
         "paid",
         "failed",
         "refunded",
         "partially_refunded"
-      ],
-      "default": "pending",
-      "required": true
+      ]
     },
     "subtotal": {
       "type": "decimal",
@@ -104,11 +104,6 @@
       "relation": "manyToOne",
       "target": "plugin::users-permissions.user",
       "inversedBy": "orders"
-    },
-    "cart": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::cart.cart"
     },
     "order_items": {
       "type": "relation",
