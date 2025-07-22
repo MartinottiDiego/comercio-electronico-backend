@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_reservations",
+  "info": {
+    "singularName": "stock-reservation",
+    "pluralName": "stock-reservations",
+    "displayName": "Stock Reservation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "reservationId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "sessionId": {
+      "type": "string",
+      "required": true
+    },
+    "userId": {
+      "type": "string"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "variant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product-variant.product-variant"
+    },
+    "quantity": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "reserved",
+        "confirmed",
+        "expired",
+        "cancelled"
+      ],
+      "default": "reserved",
+      "required": true
+    },
+    "expiresAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "confirmedAt": {
+      "type": "datetime"
+    },
+    "cancelledAt": {
+      "type": "datetime"
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+} 

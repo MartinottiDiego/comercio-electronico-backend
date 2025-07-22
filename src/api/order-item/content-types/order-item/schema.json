@@ -44,7 +44,10 @@
       "min": 0
     },
     "variant": {
-      "type": "string"
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product-variant.product-variant",
+      "inversedBy": "orderItems"
     },
     "metadata": {
       "type": "json"

@@ -63,6 +63,12 @@ export default {
       console.log('Stripe metadata:', JSON.stringify(metadata, null, 2));
       const shippingAddress = metadata.shipping_address ? JSON.parse(metadata.shipping_address) : null;
       const billingAddress = metadata.billing_address ? JSON.parse(metadata.billing_address) : null;
+      
+      // Extraer datos de validación y reservas
+      const validatedItems = metadata.validated_items ? JSON.parse(metadata.validated_items) : [];
+      const reservationIds = metadata.reservation_ids ? JSON.parse(metadata.reservation_ids) : [];
+      console.log('Validated items:', validatedItems);
+      console.log('Reservation IDs:', reservationIds);
       console.log('Parsed shippingAddress:', shippingAddress);
       console.log('Parsed billingAddress:', billingAddress);
       const userId = metadata.user_id || null;
@@ -118,19 +124,40 @@ export default {
       console.log('About to create order...');
       const order = await strapi.entityService.create('api::order.order', orderData);
       console.log('✅ Created order id:', order.id);
-      // 5. Crear los order_items
+      // 5. Confirmar reservas de stock
+      console.log('Confirming stock reservations...');
+      for (const reservationId of reservationIds) {
+        const confirmed = await strapi.service('api::product.product').confirmStockReservation(reservationId);
+        if (confirmed) {
+          console.log(`✅ Confirmed reservation: ${reservationId}`);
+        } else {
+          console.log(`❌ Failed to confirm reservation: ${reservationId}`);
+        }
+      }
+
+      // 6. Crear los order_items con relaciones reales
       console.log('About to create order items...');
-      for (const item of lineItems.data) {
+      for (let i = 0; i < lineItems.data.length; i++) {
+        const item = lineItems.data[i];
+        const validatedItem = validatedItems[i];
+        
         console.log('Creating order_item for:', item);
+        console.log('Using validated item:', validatedItem);
+        
         const orderItemData = {
           data: {
             order: order.id,
-            product: null, // No vincular producto de Stripe por ahora
+            product: validatedItem?.productId ? await this.getProductIdByDocumentId(validatedItem.productId) : null,
+            variant: validatedItem?.variantId ? await this.getVariantIdByDocumentId(validatedItem.variantId) : null,
             name: item.description,
             quantity: item.quantity,
             price: item.price?.unit_amount ? item.price.unit_amount / 100 : 0,
             subtotal: item.amount_total ? item.amount_total / 100 : 0,
-            // Puedes agregar más campos si lo necesitas
+            metadata: {
+              reservationId: validatedItem?.reservationId,
+              originalProductId: validatedItem?.productId,
+              originalVariantId: validatedItem?.variantId
+            }
           },
         };
         console.log('Order item data:', JSON.stringify(orderItemData, null, 2));
@@ -178,4 +205,38 @@ export default {
     console.log('Payment intent failed:', paymentIntent.id);
     // Aquí puedes manejar el pago fallido
   },
+
+  /**
+   * Obtener ID de producto por documentId
+   */
+  async getProductIdByDocumentId(documentId: string): Promise<string | null> {
+    try {
+      const product = await strapi.entityService.findMany('api::product.product', {
+        filters: {
+          id: documentId
+        }
+      });
+      return product && product.length > 0 ? String(product[0].id) : null;
+    } catch (error) {
+      console.error('Error getting product ID:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Obtener ID de variante por documentId
+   */
+  async getVariantIdByDocumentId(documentId: string): Promise<string | null> {
+    try {
+      const variant = await strapi.entityService.findMany('api::product-variant.product-variant', {
+        filters: {
+          id: documentId
+        }
+      });
+      return variant && variant.length > 0 ? String(variant[0].id) : null;
+    } catch (error) {
+      console.error('Error getting variant ID:', error);
+      return null;
+    }
+  }
 }; 
