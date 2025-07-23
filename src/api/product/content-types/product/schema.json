@@ -167,6 +167,16 @@
       "target": "api::review.review",
       "mappedBy": "product"
     },
+    "variants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product-variant.product-variant",
+      "mappedBy": "product"
+    },
+    "hasVariants": {
+      "type": "boolean",
+      "default": false
+    },
     "description": {
       "type": "text",
       "pluginOptions": {

@@ -95,19 +95,64 @@ export default {
         // Continuar sin cliente si hay error
       }
 
+      // Validar y reservar stock para todos los items
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const validatedItems = [];
+      const reservationIds = [];
+
+      for (const item of items) {
+        console.log(`[Stripe Controller] Validando item:`, item);
+        
+        // Validar producto usando el servicio
+        const validation = await strapi.service('api::product.product').validateProduct(
+          item.productId || item.id,
+          item.variantId,
+          item.quantity
+        );
+
+        if (!validation.isValid) {
+          return ctx.badRequest(`Error en producto: ${validation.error}`);
+        }
+
+        // Reservar stock
+        const reservation = await strapi.service('api::product.product').reserveStock(
+          item.productId || item.id,
+          item.variantId || null,
+          item.quantity,
+          sessionId,
+          metadata?.user_id
+        );
+
+        if (!reservation.success) {
+          return ctx.badRequest(`Error reservando stock: ${reservation.error}`);
+        }
+
+        reservationIds.push(reservation.reservationId);
+        
+        // Agregar item validado con datos reales
+        validatedItems.push({
+          ...item,
+          name: validation.product.title,
+          price: validation.price,
+          image: validation.product.image?.url || validation.product.thumbnail?.url,
+          description: validation.product.description,
+          productId: validation.product.documentId,
+          variantId: validation.variant?.documentId,
+          reservationId: reservation.reservationId
+        });
+      }
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
-        line_items: items.map((item: any) => {
-          const productName = item.name || `Producto ${item.productId || item.id}`;
+        line_items: validatedItems.map((item: any) => {
+          const productName = item.name;
           const productImage = item.image;
           const productDescription = item.description;
           
           // Verificar si la imagen es accesible públicamente
           let finalImage = productImage;
           if (productImage && productImage.includes('127.0.0.1:1337')) {
-            // Si es localhost, intentar usar una imagen por defecto o remover la imagen
             console.log(`[Stripe Controller] Imagen local detectada: ${productImage}`);
-            // Por ahora, no incluir imagen si es localhost
             finalImage = undefined;
           }
           
@@ -137,7 +182,12 @@ export default {
         cancel_url: cancelUrl,
         customer: customer?.id, // Usar el cliente creado
         customer_email: customer ? undefined : customerEmail, // Solo usar email si no hay cliente
-        metadata: metadata || {},
+        metadata: {
+          ...metadata,
+          reservation_ids: JSON.stringify(reservationIds),
+          validated_items: JSON.stringify(validatedItems),
+          session_id: sessionId
+        },
         allow_promotion_codes: true,
         // Configurar recolección de direcciones
         billing_address_collection: 'auto',
