@@ -9,11 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {
-    "i18n": {
-      "localized": true
-    }
-  },
+ "pluginOptions": {},
   "attributes": {
     "name": {
       "type": "string",

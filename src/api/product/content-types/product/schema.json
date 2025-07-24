@@ -9,11 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {
-    "i18n": {
-      "localized": true
-    }
-  },
+ "pluginOptions": {},
   "attributes": {
     "title": {
       "type": "string",
@@ -158,8 +154,9 @@
     },
     "category": {
       "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::category.category"
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "products"
     },
     "reviews": {
       "type": "relation",
