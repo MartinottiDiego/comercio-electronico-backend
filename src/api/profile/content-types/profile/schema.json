@@ -62,9 +62,9 @@
       },
       "multiple": false,
       "allowedTypes": [
-        "images",
-        "files"
-      ]
+        "images"
+      ],
+      "required": false
     },
     "users_permissions_user": {
       "type": "relation",
