@@ -1,0 +1,44 @@
+# Configuración de override para desarrollo
+# Este archivo se usa automáticamente con docker-compose para desarrollo
+
+version: '3.8'
+
+services:
+  strapi:
+    # Configuraciones específicas para desarrollo
+    environment:
+      # Habilitar modo desarrollo para hot reload
+      NODE_ENV: development
+      
+      # Configuraciones de desarrollo
+      STRAPI_TELEMETRY_DISABLED: "true"
+      
+    # Volúmenes adicionales para desarrollo
+    volumes:
+      # Montar código fuente para hot reload (solo en desarrollo)
+      - ./src:/app/src:ro
+      - ./config:/app/config:ro
+      - ./public:/app/public:ro
+      
+    # Configuraciones de desarrollo
+    command: ["npm", "run", "develop"]
+    
+    # Configuraciones de recursos para desarrollo
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+          
+    # Configuraciones de red para desarrollo
+    networks:
+      strapi-network:
+        ipv4_address: 172.20.0.10
+
+networks:
+  strapi-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

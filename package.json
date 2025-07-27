@@ -12,7 +12,18 @@
     "start": "strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "upgrade:dry": "npx @strapi/upgrade latest --dry",
+    
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f strapi",
+    "docker:shell": "docker-compose exec strapi sh",
+    "docker:rebuild": "docker-compose down && docker-compose build --no-cache && docker-compose up -d",
+    "docker:clean": "docker-compose down -v && docker system prune -f",
+    
+    "docker:dev": "docker-compose up",
+    "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
   },
   "dependencies": {
     "@strapi/plugin-cloud": "5.17.0",
