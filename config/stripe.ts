@@ -2,13 +2,12 @@ import Stripe from 'stripe';
 
 // Configuración de Stripe
 export const stripeConfig = {
-  secretKey: process.env.STRIPE_SECRET_KEY || 'sk_test_your_stripe_secret_key_here',
-  publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_your_stripe_publishable_key_here',
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || 'whsec_your_webhook_secret_here',
+  secretKey: process.env.STRIPE_SECRET_KEY!,
+  publishableKey: process.env.STRIPE_PUBLISHABLE_KEY!,
+  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
   currency: 'eur', // Moneda por defecto
   apiVersion: '2025-06-30.basil' as const, // Versión de la API de Stripe
 };
-
 // Instancia de Stripe
 export const stripe = new Stripe(stripeConfig.secretKey, {
   apiVersion: stripeConfig.apiVersion,
