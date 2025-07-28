@@ -14,7 +14,7 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
         filters: { user: user.id },
         populate: {
           product: {
-            populate: ['image', 'thumbnail', 'category', 'store', 'variants']
+            populate: ['Media', 'thumbnail', 'categories', 'store', 'variants']
           }
         }
       });
@@ -28,7 +28,7 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
         filters: { sessionId, user: null },
         populate: {
           product: {
-            populate: ['image', 'thumbnail', 'category', 'store', 'variants']
+            populate: ['Media', 'thumbnail', 'categories', 'store', 'variants']
           }
         }
       });
@@ -101,7 +101,7 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
       data,
       populate: {
         product: {
-          populate: ['image', 'thumbnail', 'category', 'store', 'variants']
+          populate: ['Media', 'thumbnail', 'categories', 'store', 'variants']
         }
       }
     });

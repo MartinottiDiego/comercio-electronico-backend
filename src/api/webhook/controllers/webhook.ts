@@ -64,11 +64,22 @@ export default {
       const shippingAddress = metadata.shipping_address ? JSON.parse(metadata.shipping_address) : null;
       const billingAddress = metadata.billing_address ? JSON.parse(metadata.billing_address) : null;
       
-      // Extraer datos de validación y reservas
-      const validatedItems = metadata.validated_items ? JSON.parse(metadata.validated_items) : [];
-      const reservationIds = metadata.reservation_ids ? JSON.parse(metadata.reservation_ids) : [];
-      console.log('Validated items:', validatedItems);
-      console.log('Reservation IDs:', reservationIds);
+             // Extraer datos de validación y reservas
+       const validatedItems = metadata.validated_items ? JSON.parse(metadata.validated_items) : [];
+       const reservationIds = metadata.reservation_ids ? JSON.parse(metadata.reservation_ids) : [];
+       
+       // Si no hay validated_items, crear uno basado en items_summary
+       if (validatedItems.length === 0 && metadata.items_summary) {
+         const itemsSummary = metadata.items_summary.split(',');
+         validatedItems.push({
+           productId: itemsSummary[0].split(':')[0],
+           quantity: parseInt(itemsSummary[0].split(':')[1]) || 1,
+           reservationId: reservationIds[0] || null
+         });
+       }
+       
+       console.log('Validated items:', validatedItems);
+       console.log('Reservation IDs:', reservationIds);
       console.log('Parsed shippingAddress:', shippingAddress);
       console.log('Parsed billingAddress:', billingAddress);
       const userId = metadata.user_id || null;
@@ -135,31 +146,73 @@ export default {
         }
       }
 
-      // 6. Crear los order_items con relaciones reales
-      console.log('About to create order items...');
-      for (let i = 0; i < lineItems.data.length; i++) {
-        const item = lineItems.data[i];
-        const validatedItem = validatedItems[i];
-        
-        console.log('Creating order_item for:', item);
-        console.log('Using validated item:', validatedItem);
-        
-        const orderItemData = {
-          data: {
-            order: order.id,
-            product: validatedItem?.productId ? await this.getProductIdByDocumentId(validatedItem.productId) : null,
-            variant: validatedItem?.variantId ? await this.getVariantIdByDocumentId(validatedItem.variantId) : null,
-            name: item.description,
-            quantity: item.quantity,
-            price: item.price?.unit_amount ? item.price.unit_amount / 100 : 0,
-            subtotal: item.amount_total ? item.amount_total / 100 : 0,
-            metadata: {
-              reservationId: validatedItem?.reservationId,
-              originalProductId: validatedItem?.productId,
-              originalVariantId: validatedItem?.variantId
-            }
-          },
-        };
+             // 6. Crear los order_items con relaciones reales
+       console.log('About to create order items...');
+       for (let i = 0; i < lineItems.data.length; i++) {
+         const item = lineItems.data[i];
+         const validatedItem = validatedItems[i];
+         
+         console.log('Creating order_item for:', item);
+         console.log('Using validated item:', validatedItem);
+         
+         // Buscar el producto para obtener la imagen y establecer la relación
+         let productImage = null;
+         let productId = null;
+         
+         // Si no hay validatedItem, intentar obtener el productId del metadata
+         if (!validatedItem?.productId && metadata.items_summary) {
+           const itemsSummary = metadata.items_summary.split(',');
+           const firstItem = itemsSummary[0];
+           if (firstItem) {
+             const productIdFromSummary = firstItem.split(':')[0];
+             console.log('🔵 [WEBHOOK] Using productId from items_summary:', productIdFromSummary);
+             
+             // Intentar encontrar el producto por documentId
+             productId = await this.getProductIdByDocumentId(productIdFromSummary);
+             if (productId) {
+               console.log('🔵 [WEBHOOK] Found product by documentId from summary:', productId);
+             }
+           }
+         } else if (validatedItem?.productId) {
+           productId = await this.getProductIdByDocumentId(validatedItem.productId);
+           console.log('🔵 [WEBHOOK] Found product by validatedItem:', productId);
+         }
+         
+         // Si encontramos el producto, obtener su imagen
+         if (productId) {
+           try {
+             const product = await strapi.entityService.findOne('api::product.product', productId, {
+               populate: ['thumbnail', 'Media']
+             });
+             if (product) {
+               console.log('🔵 [WEBHOOK] Product found, normalizing image...');
+               productImage = this.normalizeProductImage(product);
+               console.log('🔵 [WEBHOOK] Normalized image URL:', productImage);
+             }
+           } catch (error) {
+             console.log('❌ [WEBHOOK] Error getting product image:', error);
+           }
+         } else {
+           console.log('❌ [WEBHOOK] No product found, will create order item without product relation');
+         }
+         
+         const orderItemData = {
+           data: {
+             order: order.id,
+             product: productId, // Ahora debería tener el ID correcto
+             variant: validatedItem?.variantId ? await this.getVariantIdByDocumentId(validatedItem.variantId) : null,
+             name: item.description,
+             image: productImage, // Guardar la imagen del producto
+             quantity: item.quantity,
+             price: item.price?.unit_amount ? item.price.unit_amount / 100 : 0,
+             subtotal: item.amount_total ? item.amount_total / 100 : 0,
+             metadata: {
+               reservationId: validatedItem?.reservationId,
+               originalProductId: validatedItem?.productId || (metadata.items_summary ? metadata.items_summary.split(',')[0].split(':')[0] : null),
+               originalVariantId: validatedItem?.variantId
+             }
+           },
+         };
         console.log('Order item data:', JSON.stringify(orderItemData, null, 2));
         const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
         console.log('✅ Created order item id:', orderItem.id);
@@ -211,14 +264,32 @@ export default {
    */
   async getProductIdByDocumentId(documentId: string): Promise<string | null> {
     try {
-      const product = await strapi.entityService.findMany('api::product.product', {
-        filters: {
-          id: documentId
-        }
+      console.log('🔵 [WEBHOOK] Looking for product with documentId:', documentId);
+      
+      // Usar query raw para buscar por documentId
+      const productsByDocumentId = await strapi.db.query('api::product.product').findMany({
+        where: { documentId: documentId },
+        limit: 1
       });
-      return product && product.length > 0 ? String(product[0].id) : null;
+      
+      if (productsByDocumentId && productsByDocumentId.length > 0) {
+        console.log('🔵 [WEBHOOK] Found product by documentId:', productsByDocumentId[0].id);
+        return String(productsByDocumentId[0].id);
+      }
+      
+      // Si no se encuentra por documentId, intentar por id
+      console.log('🔵 [WEBHOOK] Trying to find by ID:', documentId);
+      const productById = await strapi.entityService.findOne('api::product.product', documentId);
+      
+      if (productById) {
+        console.log('🔵 [WEBHOOK] Found product by ID:', productById.id);
+        return String(productById.id);
+      }
+      
+      console.log('❌ [WEBHOOK] Product not found with documentId or ID:', documentId);
+      return null;
     } catch (error) {
-      console.error('Error getting product ID:', error);
+      console.error('❌ [WEBHOOK] Error getting product ID:', error);
       return null;
     }
   },
@@ -238,5 +309,94 @@ export default {
       console.error('Error getting variant ID:', error);
       return null;
     }
+  },
+
+  /**
+   * Normalizar imagen de producto (similar a la función del frontend)
+   */
+  normalizeProductImage(product: any): string {
+    // Prioridad: thumbnail > Media > image > photos[0] > images[0] > placeholder
+
+    // Manejar thumbnail (puede ser objeto de Strapi o URL directa)
+    if (product.thumbnail) {
+      if (typeof product.thumbnail === 'string' && product.thumbnail !== '') {
+        return this.normalizeStrapiImageUrl(product.thumbnail);
+      }
+      if (typeof product.thumbnail === 'object' && product.thumbnail.url) {
+        return this.normalizeStrapiImageUrl(product.thumbnail.url);
+      }
+    }
+
+    // Manejar Media (campo específico de Strapi con populate=*)
+    if (product.Media) {
+      if (typeof product.Media === 'string' && product.Media !== '') {
+        return this.normalizeStrapiImageUrl(product.Media);
+      }
+      if (typeof product.Media === 'object' && product.Media.url) {
+        return this.normalizeStrapiImageUrl(product.Media.url);
+      }
+    }
+
+    // Manejar image (campo genérico)
+    if (product.image) {
+      if (typeof product.image === 'string' && product.image !== '') {
+        return this.normalizeStrapiImageUrl(product.image);
+      }
+      if (typeof product.image === 'object' && product.image.url) {
+        return this.normalizeStrapiImageUrl(product.image.url);
+      }
+    }
+
+    // Manejar photos array
+    if (product.photos && Array.isArray(product.photos) && product.photos.length > 0) {
+      const firstPhoto = product.photos[0];
+      if (typeof firstPhoto === 'string' && firstPhoto !== '') {
+        return this.normalizeStrapiImageUrl(firstPhoto);
+      }
+      if (typeof firstPhoto === 'object' && firstPhoto.url) {
+        return this.normalizeStrapiImageUrl(firstPhoto.url);
+      }
+    }
+
+    // Manejar images array
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      const firstImage = product.images[0];
+      if (typeof firstImage === 'string' && firstImage !== '') {
+        return this.normalizeStrapiImageUrl(firstImage);
+      }
+      if (typeof firstImage === 'object' && firstImage.url) {
+        return this.normalizeStrapiImageUrl(firstImage.url);
+      }
+    }
+
+    // Si no se encuentra ninguna imagen, devolver placeholder
+    return '/placeholder-logo.png';
+  },
+
+  /**
+   * Normalizar URL de imagen de Strapi
+   */
+  normalizeStrapiImageUrl(imageUrl: any): string {
+    // Si no hay URL o no es una cadena, devolver placeholder
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return '/placeholder-logo.png';
+    }
+
+    // Si ya es una URL completa, devolverla tal como está
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+
+    // Si es una ruta relativa que empieza con /uploads/, usar URL completa de Strapi
+    if (imageUrl.startsWith('/uploads/')) {
+      return `http://localhost:1337${imageUrl}`;
+    }
+
+    // Si es una ruta relativa sin /uploads/, asumir que es del frontend
+    if (imageUrl.startsWith('/')) {
+      return imageUrl;
+    }
+
+    return '/placeholder-logo.png';
   }
 }; 

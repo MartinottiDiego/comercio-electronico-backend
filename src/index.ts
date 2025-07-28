@@ -20,7 +20,7 @@ export default {
     // Cron job para limpiar reservas expiradas cada 5 minutos
     setInterval(async () => {
       try {
-        await strapi.service('api::product.product').cleanupExpiredReservations();
+                    await strapi.service('api::product.product').cleanupExpiredReservations();
       } catch (error) {
         console.error('Error in cleanup cron job:', error);
       }

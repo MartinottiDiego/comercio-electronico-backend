@@ -14,7 +14,7 @@ export default factories.createCoreController('api::cart.cart', ({ strapi }) => 
         filters: { user: user.id },
         populate: {
           product: {
-            populate: ['image', 'thumbnail', 'category', 'store']
+            populate: ['Media', 'thumbnail', 'categories', 'store']
           },
           variant: true
         }
@@ -29,7 +29,7 @@ export default factories.createCoreController('api::cart.cart', ({ strapi }) => 
         filters: { sessionId, user: null },
         populate: {
           product: {
-            populate: ['image', 'thumbnail', 'category', 'store']
+            populate: ['Media', 'thumbnail', 'categories', 'store']
           },
           variant: true
         }
@@ -119,7 +119,7 @@ export default factories.createCoreController('api::cart.cart', ({ strapi }) => 
       data,
       populate: {
         product: {
-          populate: ['image', 'thumbnail', 'category', 'store']
+          populate: ['Media', 'thumbnail', 'categories', 'store']
         },
         variant: true
       }
@@ -157,7 +157,7 @@ export default factories.createCoreController('api::cart.cart', ({ strapi }) => 
       data: { quantity },
       populate: {
         product: {
-          populate: ['image', 'thumbnail', 'category', 'store']
+          populate: ['Media', 'thumbnail', 'categories', 'store']
         },
         variant: true
       }

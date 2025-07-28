@@ -142,6 +142,17 @@ export default {
         });
       }
 
+      console.log('🔵 [CHECKOUT] Creating session with metadata:', {
+        reservation_ids: JSON.stringify(reservationIds),
+        items_count: validatedItems.length.toString(),
+        session_id: sessionId,
+        items_summary: validatedItems.map(item => ({
+          id: item.productId,
+          qty: item.quantity,
+          price: item.price
+        })).slice(0, 3).map(item => `${item.id}:${item.qty}`).join(',')
+      });
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: validatedItems.map((item: any) => {
@@ -150,10 +161,20 @@ export default {
           const productDescription = item.description;
           
           // Verificar si la imagen es accesible públicamente
-          let finalImage = productImage;
-          if (productImage && productImage.includes('127.0.0.1:1337')) {
-            console.log(`[Stripe Controller] Imagen local detectada: ${productImage}`);
-            finalImage = undefined;
+          let finalImage = undefined;
+          if (productImage) {
+            // Solo usar imágenes que sean URLs públicas accesibles
+            if (productImage.startsWith('http') && 
+                !productImage.includes('localhost') && 
+                !productImage.includes('127.0.0.1') &&
+                !productImage.includes('192.168.') &&
+                !productImage.includes('10.') &&
+                !productImage.includes('172.')) {
+              finalImage = productImage;
+              console.log(`[Stripe Controller] Usando imagen pública: ${productImage}`);
+            } else {
+              console.log(`[Stripe Controller] Imagen local detectada, omitiendo: ${productImage}`);
+            }
           }
           
           console.log(`[Stripe Controller] Creando line item para:`, {
@@ -185,8 +206,15 @@ export default {
         metadata: {
           ...metadata,
           reservation_ids: JSON.stringify(reservationIds),
-          validated_items: JSON.stringify(validatedItems),
-          session_id: sessionId
+          // Simplificar validated_items para evitar exceder el límite de 500 caracteres
+          items_count: validatedItems.length.toString(),
+          session_id: sessionId,
+          // Solo incluir información esencial de los items
+          items_summary: validatedItems.map(item => ({
+            id: item.productId,
+            qty: item.quantity,
+            price: item.price
+          })).slice(0, 3).map(item => `${item.id}:${item.qty}`).join(',')
         },
         allow_promotion_codes: true,
         // Configurar recolección de direcciones
@@ -197,6 +225,9 @@ export default {
         // No crear cliente automáticamente ya que lo creamos manualmente
         customer_creation: customer ? undefined : 'always',
       });
+
+      console.log('✅ [CHECKOUT] Session created successfully:', session.id);
+      console.log('✅ [CHECKOUT] Session metadata:', session.metadata);
 
       ctx.body = {
         success: true,
@@ -378,10 +409,15 @@ export default {
    */
   async webhook(ctx: Context) {
     try {
+      console.log('🔵 [WEBHOOK] Webhook received');
       const signature = ctx.request.headers['stripe-signature'] as string;
       const payload = ctx.request.body;
 
+      console.log('🔵 [WEBHOOK] Headers:', Object.keys(ctx.request.headers));
+      console.log('🔵 [WEBHOOK] Has signature:', !!signature);
+
       if (!signature) {
+        console.error('❌ [WEBHOOK] No Stripe signature found');
         return ctx.badRequest('Stripe signature is required');
       }
 
@@ -391,48 +427,359 @@ export default {
         stripeConfig.webhookSecret
       );
 
+      console.log('🔵 [WEBHOOK] Event type:', event.type);
+      console.log('🔵 [WEBHOOK] Event ID:', event.id);
+
       // Manejar diferentes tipos de eventos
       switch (event.type) {
         case 'checkout.session.completed':
+          console.log('🔵 [WEBHOOK] Processing checkout.session.completed');
           await this.handleCheckoutSessionCompleted(event.data.object);
           break;
         case 'payment_intent.succeeded':
+          console.log('🔵 [WEBHOOK] Processing payment_intent.succeeded');
           await this.handlePaymentIntentSucceeded(event.data.object);
           break;
         case 'payment_intent.payment_failed':
+          console.log('🔵 [WEBHOOK] Processing payment_intent.payment_failed');
           await this.handlePaymentIntentFailed(event.data.object);
           break;
         case 'invoice.payment_succeeded':
+          console.log('🔵 [WEBHOOK] Processing invoice.payment_succeeded');
           await this.handleInvoicePaymentSucceeded(event.data.object);
           break;
         case 'invoice.payment_failed':
+          console.log('🔵 [WEBHOOK] Processing invoice.payment_failed');
           await this.handleInvoicePaymentFailed(event.data.object);
           break;
         default:
-          console.log(`Unhandled event type: ${event.type}`);
+          console.log(`🔵 [WEBHOOK] Unhandled event type: ${event.type}`);
       }
 
+      console.log('✅ [WEBHOOK] Webhook processed successfully');
       ctx.body = { received: true };
     } catch (error) {
-      console.error('Error in webhook:', error);
+      console.error('❌ [WEBHOOK] Error in webhook:', error);
+      console.error('❌ [WEBHOOK] Error stack:', error.stack);
       ctx.throw(400, 'Webhook error');
     }
   },
 
   // Funciones auxiliares para manejar eventos de webhook
   async handleCheckoutSessionCompleted(session: any) {
-    console.log('Checkout session completed:', session.id);
-    // Aquí puedes actualizar el estado de la orden en tu base de datos
+    try {
+      console.log('🔵 [WEBHOOK] Checkout session completed:', session.id);
+      console.log('🔵 [WEBHOOK] Session metadata:', JSON.stringify(session.metadata, null, 2));
+      console.log('🔵 [WEBHOOK] Session payment_status:', session.payment_status);
+      console.log('🔵 [WEBHOOK] Session amount_total:', session.amount_total);
+
+      // Extraer datos de la sesión
+      const metadata = session.metadata;
+      const customerEmail = session.customer_email;
+      const amountTotal = session.amount_total;
+      const currency = session.currency;
+      const paymentStatus = session.payment_status;
+      const sessionId = metadata?.session_id;
+
+      // Parsear direcciones del metadata
+      let shippingAddress = null;
+      let billingAddress = null;
+      let userId = null;
+
+      if (metadata?.shipping_address) {
+        try {
+          shippingAddress = JSON.parse(metadata.shipping_address);
+        } catch (error) {
+          console.error('Error parsing shipping address:', error);
+        }
+      }
+
+      if (metadata?.billing_address) {
+        try {
+          billingAddress = JSON.parse(metadata.billing_address);
+        } catch (error) {
+          console.error('Error parsing billing address:', error);
+        }
+      }
+
+      if (metadata?.user_id) {
+        userId = metadata.user_id;
+      }
+
+      // Buscar o crear usuario
+      let user = null;
+      if (userId) {
+        try {
+          user = await strapi.entityService.findOne('plugin::users-permissions.user', userId);
+        } catch (error) {
+          console.error('Error finding user:', error);
+        }
+      }
+
+      if (!user && customerEmail) {
+        try {
+          const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+            filters: { email: customerEmail },
+            limit: 1
+          });
+          if (users.length > 0) {
+            user = users[0];
+          }
+        } catch (error) {
+          console.error('Error finding user by email:', error);
+        }
+      }
+
+      // Crear la orden usando any para evitar problemas de tipos
+      const orderData: any = {
+        data: {
+          orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          status: paymentStatus === 'paid' ? 'confirmed' : 'pending',
+          paymentStatus: paymentStatus === 'paid' ? 'paid' : 'pending',
+          subtotal: amountTotal / 100, // Convertir de centavos
+          tax: 0,
+          shipping: 0,
+          discount: 0,
+          total: amountTotal / 100, // Convertir de centavos
+          currency: currency,
+          metadata: metadata,
+          user: user ? user.id : null
+        }
+      };
+
+      console.log('🔵 [WEBHOOK] Creating order with data:', JSON.stringify(orderData, null, 2));
+
+      const order = await strapi.entityService.create('api::order.order', orderData);
+      console.log('✅ [WEBHOOK] Order created successfully:', order.id);
+
+      // Crear el payment usando any para evitar problemas de tipos
+      const paymentData: any = {
+        data: {
+          paymentIntentId: session.payment_intent || `pi_${Date.now()}`,
+          checkoutSessionId: session.id,
+          amount: amountTotal / 100,
+          currency: currency,
+          status: paymentStatus === 'paid' ? 'completed' : 'pending',
+          method: 'stripe',
+          date: new Date(),
+          customerEmail: customerEmail,
+          customerName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : customerEmail,
+          metadata: metadata,
+          order: order.id
+        }
+      };
+
+      console.log('🔵 [WEBHOOK] Creating payment with data:', JSON.stringify(paymentData, null, 2));
+
+      const payment = await strapi.entityService.create('api::payment.payment', paymentData);
+      console.log('✅ [WEBHOOK] Payment created successfully:', payment.id);
+
+             // Crear order_items basado en los metadatos
+       console.log('🔵 [WEBHOOK] Checking metadata.items_summary:', metadata?.items_summary);
+       
+       // Obtener line_items de Stripe para información adicional
+       let lineItems = null;
+       try {
+         lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+         console.log('🔵 [WEBHOOK] Stripe line items:', lineItems);
+       } catch (error) {
+         console.error('❌ [WEBHOOK] Error getting line items:', error);
+       }
+       
+       if (metadata?.items_summary) {
+        try {
+          const itemsSummary = metadata.items_summary;
+          const items = itemsSummary.split(',').map(item => {
+            const [productId, qty] = item.split(':');
+            return { productId, quantity: parseInt(qty) };
+          });
+
+          console.log('🔵 [WEBHOOK] Processing items:', items);
+
+                     for (const item of items) {
+             console.log('🔵 [WEBHOOK] Looking for product with ID:', item.productId);
+             
+             // Buscar el producto por documentId primero, luego por id
+             let product = null;
+             
+             try {
+               // Intentar buscar por documentId usando query raw
+               const productsByDocumentId = await strapi.db.query('api::product.product').findMany({
+                 where: { documentId: item.productId },
+                 limit: 1
+               });
+               
+               console.log('🔵 [WEBHOOK] Products found by documentId:', productsByDocumentId.length);
+               
+               if (productsByDocumentId.length > 0) {
+                 product = productsByDocumentId[0];
+                 console.log('🔵 [WEBHOOK] Found product by documentId:', product.id, product.title);
+               } else {
+                 // Si no se encuentra por documentId, intentar por id
+                 console.log('🔵 [WEBHOOK] Trying to find by ID:', item.productId);
+                 product = await strapi.entityService.findOne('api::product.product', item.productId);
+                 if (product) {
+                   console.log('🔵 [WEBHOOK] Found product by ID:', product.id, product.title);
+                 }
+               }
+             } catch (error) {
+               console.error(`❌ [WEBHOOK] Error finding product ${item.productId}:`, error);
+             }
+            
+                         if (product) {
+               console.log('🔵 [WEBHOOK] Found product:', product.id, product.title);
+               const orderItemData: any = {
+                 data: {
+                   name: product.title || product.name || `Producto ${product.id}`,
+                   image: product.image?.url || product.thumbnail?.url || null,
+                   quantity: item.quantity,
+                   price: product.price,
+                   subtotal: product.price * item.quantity,
+                   order: order.id,
+                   product: product.id
+                 }
+               };
+
+               console.log('🔵 [WEBHOOK] Creating order item with data:', JSON.stringify(orderItemData, null, 2));
+
+               const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
+               console.log('✅ [WEBHOOK] Order item created successfully:', orderItem.id);
+             } else {
+               console.error(`❌ [WEBHOOK] Product not found: ${item.productId}`);
+               
+               // Intentar crear order item usando información de Stripe line_items
+               if (lineItems && lineItems.data && lineItems.data.length > 0) {
+                 const stripeItem = lineItems.data.find(stripeItem => 
+                   stripeItem.description && stripeItem.description.includes('Reloj Inteligente Pro')
+                 );
+                 
+                 if (stripeItem) {
+                   console.log('🔵 [WEBHOOK] Creating order item from Stripe data');
+                   const orderItemData: any = {
+                     data: {
+                       name: stripeItem.description || `Producto ${item.productId}`,
+                       image: null,
+                       quantity: item.quantity,
+                       price: stripeItem.amount_total / 100, // Convertir de centavos
+                       subtotal: (stripeItem.amount_total / 100) * item.quantity,
+                       order: order.id,
+                       product: null // No tenemos el producto en BD
+                     }
+                   };
+
+                   console.log('🔵 [WEBHOOK] Creating order item from Stripe with data:', JSON.stringify(orderItemData, null, 2));
+
+                   const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
+                   console.log('✅ [WEBHOOK] Order item created from Stripe data successfully:', orderItem.id);
+                 }
+               }
+             }
+          }
+        } catch (error) {
+          console.error('Error creating order items:', error);
+        }
+      }
+
+      // Liberar las reservas de stock
+      if (metadata?.reservation_ids) {
+        try {
+          const reservationIds = JSON.parse(metadata.reservation_ids);
+          for (const reservationId of reservationIds) {
+            await strapi.service('api::product.product').releaseStock(reservationId);
+          }
+        } catch (error) {
+          console.error('Error releasing stock reservations:', error);
+        }
+      }
+
+      console.log('✅ [WEBHOOK] Checkout session processing completed successfully');
+    } catch (error) {
+      console.error('❌ [WEBHOOK] Error in handleCheckoutSessionCompleted:', error);
+      console.error('❌ [WEBHOOK] Error stack:', error.stack);
+    }
   },
 
   async handlePaymentIntentSucceeded(paymentIntent: any) {
-    console.log('Payment intent succeeded:', paymentIntent.id);
-    // Aquí puedes actualizar el estado del pago en tu base de datos
+    try {
+      console.log('Payment intent succeeded:', paymentIntent.id);
+      
+      // Buscar el payment por paymentIntentId
+      const payments = await strapi.entityService.findMany('api::payment.payment', {
+        filters: {
+          paymentIntentId: paymentIntent.id
+        }
+      });
+
+      if (payments.length > 0) {
+        const payment = payments[0] as any;
+        
+        // Actualizar el estado del payment
+        await strapi.entityService.update('api::payment.payment', payment.id, {
+          data: {
+            status: 'completed'
+          }
+        });
+
+        // Buscar la orden asociada al payment
+        if (payment.order) {
+          await strapi.entityService.update('api::order.order', payment.order, {
+            data: {
+              status: 'confirmed',
+              paymentStatus: 'paid'
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error in handlePaymentIntentSucceeded:', error);
+    }
   },
 
   async handlePaymentIntentFailed(paymentIntent: any) {
-    console.log('Payment intent failed:', paymentIntent.id);
-    // Aquí puedes manejar el pago fallido
+    try {
+      console.log('Payment intent failed:', paymentIntent.id);
+      
+      // Buscar el payment y actualizar su estado
+      const payments = await strapi.entityService.findMany('api::payment.payment', {
+        filters: {
+          paymentIntentId: paymentIntent.id
+        }
+      });
+
+      if (payments.length > 0) {
+        const payment = payments[0] as any;
+        
+        await strapi.entityService.update('api::payment.payment', payment.id, {
+          data: {
+            status: 'failed'
+          }
+        });
+
+        // Buscar la orden asociada al payment
+        if (payment.order) {
+          await strapi.entityService.update('api::order.order', payment.order, {
+            data: {
+              status: 'failed',
+              paymentStatus: 'failed'
+            }
+          });
+        }
+
+        // Liberar las reservas de stock
+        if (payment.metadata && typeof payment.metadata === 'object' && 'reservation_ids' in payment.metadata) {
+          try {
+            const reservationIds = JSON.parse(payment.metadata.reservation_ids as string);
+            for (const reservationId of reservationIds) {
+              await strapi.service('api::product.product').releaseStock(reservationId);
+            }
+          } catch (error) {
+            console.error('Error releasing stock reservations:', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in handlePaymentIntentFailed:', error);
+    }
   },
 
   async handleInvoicePaymentSucceeded(invoice: any) {

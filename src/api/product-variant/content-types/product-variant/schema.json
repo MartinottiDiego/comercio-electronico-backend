@@ -13,14 +13,14 @@
   "attributes": {
     "sku": {
       "type": "string",
+      "maxLength": 100,
       "required": true,
-      "unique": true,
-      "maxLength": 100
+      "unique": true
     },
     "name": {
       "type": "string",
-      "required": true,
-      "maxLength": 200
+      "maxLength": 200,
+      "required": true
     },
     "price": {
       "type": "decimal",
@@ -73,12 +73,6 @@
         "images"
       ]
     },
-    "product": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::product.product",
-      "inversedBy": "variants"
-    },
     "orderItems": {
       "type": "relation",
       "relation": "oneToMany",
@@ -86,4 +80,4 @@
       "mappedBy": "variant"
     }
   }
-} 
+}
