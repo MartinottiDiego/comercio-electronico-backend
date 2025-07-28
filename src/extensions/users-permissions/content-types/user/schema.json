@@ -66,12 +66,6 @@
       "inversedBy": "users",
       "configurable": false
     },
-    "stores": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::store.store",
-      "mappedBy": "owner"
-    },
     "reviews": {
       "type": "relation",
       "relation": "oneToMany",
@@ -113,6 +107,12 @@
       "relation": "oneToMany",
       "target": "api::address.address",
       "mappedBy": "users_permissions_user"
+    },
+    "stores": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::store.store",
+      "mappedBy": "owner"
     }
   }
 }

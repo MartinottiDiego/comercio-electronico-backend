@@ -9,6 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "reservationId": {
       "type": "string",
@@ -22,11 +23,6 @@
     "userId": {
       "type": "string"
     },
-    "product": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::product.product"
-    },
     "variant": {
       "type": "relation",
       "relation": "manyToOne",
@@ -39,14 +35,14 @@
     },
     "status": {
       "type": "enumeration",
+      "required": true,
+      "default": "reserved",
       "enum": [
         "reserved",
         "confirmed",
         "expired",
         "cancelled"
-      ],
-      "default": "reserved",
-      "required": true
+      ]
     },
     "expiresAt": {
       "type": "datetime",
@@ -62,4 +58,4 @@
       "type": "json"
     }
   }
-} 
+}

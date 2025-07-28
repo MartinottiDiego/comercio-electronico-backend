@@ -9,6 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "order": {
       "type": "relation",
@@ -54,13 +55,13 @@
     },
     "refundStatus": {
       "type": "enumeration",
+      "default": "none",
       "enum": [
         "none",
         "requested",
         "refunded",
         "rejected"
-      ],
-      "default": "none"
+      ]
     },
     "reviewed": {
       "type": "boolean",

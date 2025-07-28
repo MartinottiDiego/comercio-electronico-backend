@@ -9,7 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
- "pluginOptions": {},
+  "pluginOptions": {},
   "attributes": {
     "refundId": {
       "type": "string",

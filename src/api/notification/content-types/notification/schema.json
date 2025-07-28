@@ -13,6 +13,7 @@
   "attributes": {
     "type": {
       "type": "enumeration",
+      "required": true,
       "enum": [
         "order_status",
         "payment_status",
@@ -21,39 +22,38 @@
         "system",
         "security",
         "review_request"
-      ],
-      "required": true
+      ]
     },
     "title": {
       "type": "string",
-      "required": true,
-      "maxLength": 200
+      "maxLength": 200,
+      "required": true
     },
     "message": {
       "type": "text",
-      "required": true,
-      "maxLength": 1000
+      "maxLength": 1000,
+      "required": true
     },
     "priority": {
       "type": "enumeration",
+      "required": true,
+      "default": "normal",
       "enum": [
         "low",
         "normal",
         "high",
         "urgent"
-      ],
-      "default": "normal",
-      "required": true
+      ]
     },
     "status": {
       "type": "enumeration",
+      "required": true,
+      "default": "unread",
       "enum": [
         "unread",
         "read",
         "archived"
-      ],
-      "default": "unread",
-      "required": true
+      ]
     },
     "readAt": {
       "type": "datetime"
@@ -77,16 +77,6 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::order.order"
-    },
-    "product": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::product.product"
-    },
-    "store": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::store.store"
     }
   }
 }
