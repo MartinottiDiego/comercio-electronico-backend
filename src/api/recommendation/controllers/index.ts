@@ -16,11 +16,40 @@ export default ({ strapi }: { strapi: any }) => {
         });
 
         // Transformar los productos para que sean compatibles con el frontend
-        const transformedProducts = products.map(product => ({
-          ...product,
-          images: product.Media ? [product.Media] : (product.thumbnail ? [product.thumbnail] : []),
-          category: product.categories && product.categories.length > 0 ? product.categories[0] : null
-        }));
+        const transformedProducts = products.map(product => {
+          // Manejar imágenes correctamente
+          let images = [];
+          if (product.Media && product.Media.url) {
+            images.push({
+              id: product.Media.id || 1,
+              url: product.Media.url,
+              alternativeText: product.Media.alternativeText || product.title || 'Producto'
+            });
+          } else if (product.thumbnail && product.thumbnail.url) {
+            images.push({
+              id: product.thumbnail.id || 1,
+              url: product.thumbnail.url,
+              alternativeText: product.thumbnail.alternativeText || product.title || 'Producto'
+            });
+          }
+
+          return {
+            id: product.id,
+            title: product.title || product.name || `Producto ${product.id}`,
+            description: product.description || '',
+            price: product.price || 0,
+            slug: product.slug || `producto-${product.id}`,
+            images: images,
+            category: product.categories && product.categories.length > 0 ? {
+              id: product.categories[0].id,
+              name: product.categories[0].name
+            } : null,
+            store: product.store ? {
+              id: product.store.id,
+              name: product.store.name
+            } : null
+          };
+        });
 
         return {
           data: transformedProducts,
@@ -80,11 +109,40 @@ export default ({ strapi }: { strapi: any }) => {
         });
 
         // Transformar los productos para que sean compatibles con el frontend
-        const transformedProducts = products.map(product => ({
-          ...product,
-          images: product.Media ? [product.Media] : (product.thumbnail ? [product.thumbnail] : []),
-          category: product.categories && product.categories.length > 0 ? product.categories[0] : null
-        }));
+        const transformedProducts = products.map(product => {
+          // Manejar imágenes correctamente
+          let images = [];
+          if (product.Media && product.Media.url) {
+            images.push({
+              id: product.Media.id || 1,
+              url: product.Media.url,
+              alternativeText: product.Media.alternativeText || product.title || 'Producto'
+            });
+          } else if (product.thumbnail && product.thumbnail.url) {
+            images.push({
+              id: product.thumbnail.id || 1,
+              url: product.thumbnail.url,
+              alternativeText: product.thumbnail.alternativeText || product.title || 'Producto'
+            });
+          }
+
+          return {
+            id: product.id,
+            title: product.title || product.name || `Producto ${product.id}`,
+            description: product.description || '',
+            price: product.price || 0,
+            slug: product.slug || `producto-${product.id}`,
+            images: images,
+            category: product.categories && product.categories.length > 0 ? {
+              id: product.categories[0].id,
+              name: product.categories[0].name
+            } : null,
+            store: product.store ? {
+              id: product.store.id,
+              name: product.store.name
+            } : null
+          };
+        });
 
         return {
           data: transformedProducts,
@@ -116,11 +174,40 @@ export default ({ strapi }: { strapi: any }) => {
         });
 
         // Transformar los productos para que sean compatibles con el frontend
-        const transformedProducts = products.map(product => ({
-          ...product,
-          images: product.Media ? [product.Media] : (product.thumbnail ? [product.thumbnail] : []),
-          category: product.categories && product.categories.length > 0 ? product.categories[0] : null
-        }));
+        const transformedProducts = products.map(product => {
+          // Manejar imágenes correctamente
+          let images = [];
+          if (product.Media && product.Media.url) {
+            images.push({
+              id: product.Media.id || 1,
+              url: product.Media.url,
+              alternativeText: product.Media.alternativeText || product.title || 'Producto'
+            });
+          } else if (product.thumbnail && product.thumbnail.url) {
+            images.push({
+              id: product.thumbnail.id || 1,
+              url: product.thumbnail.url,
+              alternativeText: product.thumbnail.alternativeText || product.title || 'Producto'
+            });
+          }
+
+          return {
+            id: product.id,
+            title: product.title || product.name || `Producto ${product.id}`,
+            description: product.description || '',
+            price: product.price || 0,
+            slug: product.slug || `producto-${product.id}`,
+            images: images,
+            category: product.categories && product.categories.length > 0 ? {
+              id: product.categories[0].id,
+              name: product.categories[0].name
+            } : null,
+            store: product.store ? {
+              id: product.store.id,
+              name: product.store.name
+            } : null
+          };
+        });
 
         return {
           data: transformedProducts,
@@ -158,11 +245,40 @@ export default ({ strapi }: { strapi: any }) => {
         });
 
         // Transformar los productos para que sean compatibles con el frontend
-        const transformedProducts = products.map(product => ({
-          ...product,
-          images: product.Media ? [product.Media] : (product.thumbnail ? [product.thumbnail] : []),
-          category: product.categories && product.categories.length > 0 ? product.categories[0] : null
-        }));
+        const transformedProducts = products.map(product => {
+          // Manejar imágenes correctamente
+          let images = [];
+          if (product.Media && product.Media.url) {
+            images.push({
+              id: product.Media.id || 1,
+              url: product.Media.url,
+              alternativeText: product.Media.alternativeText || product.title || 'Producto'
+            });
+          } else if (product.thumbnail && product.thumbnail.url) {
+            images.push({
+              id: product.thumbnail.id || 1,
+              url: product.thumbnail.url,
+              alternativeText: product.thumbnail.alternativeText || product.title || 'Producto'
+            });
+          }
+
+          return {
+            id: product.id,
+            title: product.title || product.name || `Producto ${product.id}`,
+            description: product.description || '',
+            price: product.price || 0,
+            slug: product.slug || `producto-${product.id}`,
+            images: images,
+            category: product.categories && product.categories.length > 0 ? {
+              id: product.categories[0].id,
+              name: product.categories[0].name
+            } : null,
+            store: product.store ? {
+              id: product.store.id,
+              name: product.store.name
+            } : null
+          };
+        });
 
         return {
           data: transformedProducts,
@@ -194,11 +310,40 @@ export default ({ strapi }: { strapi: any }) => {
         });
 
         // Transformar los productos para que sean compatibles con el frontend
-        const transformedProducts = products.map(product => ({
-          ...product,
-          images: product.Media ? [product.Media] : (product.thumbnail ? [product.thumbnail] : []),
-          category: product.categories && product.categories.length > 0 ? product.categories[0] : null
-        }));
+        const transformedProducts = products.map(product => {
+          // Manejar imágenes correctamente
+          let images = [];
+          if (product.Media && product.Media.url) {
+            images.push({
+              id: product.Media.id || 1,
+              url: product.Media.url,
+              alternativeText: product.Media.alternativeText || product.title || 'Producto'
+            });
+          } else if (product.thumbnail && product.thumbnail.url) {
+            images.push({
+              id: product.thumbnail.id || 1,
+              url: product.thumbnail.url,
+              alternativeText: product.thumbnail.alternativeText || product.title || 'Producto'
+            });
+          }
+
+          return {
+            id: product.id,
+            title: product.title || product.name || `Producto ${product.id}`,
+            description: product.description || '',
+            price: product.price || 0,
+            slug: product.slug || `producto-${product.id}`,
+            images: images,
+            category: product.categories && product.categories.length > 0 ? {
+              id: product.categories[0].id,
+              name: product.categories[0].name
+            } : null,
+            store: product.store ? {
+              id: product.store.id,
+              name: product.store.name
+            } : null
+          };
+        });
 
         return {
           data: transformedProducts,
@@ -230,11 +375,40 @@ export default ({ strapi }: { strapi: any }) => {
         });
 
         // Transformar los productos para que sean compatibles con el frontend
-        const transformedProducts = products.map(product => ({
-          ...product,
-          images: product.Media ? [product.Media] : (product.thumbnail ? [product.thumbnail] : []),
-          category: product.categories && product.categories.length > 0 ? product.categories[0] : null
-        }));
+        const transformedProducts = products.map(product => {
+          // Manejar imágenes correctamente
+          let images = [];
+          if (product.Media && product.Media.url) {
+            images.push({
+              id: product.Media.id || 1,
+              url: product.Media.url,
+              alternativeText: product.Media.alternativeText || product.title || 'Producto'
+            });
+          } else if (product.thumbnail && product.thumbnail.url) {
+            images.push({
+              id: product.thumbnail.id || 1,
+              url: product.thumbnail.url,
+              alternativeText: product.thumbnail.alternativeText || product.title || 'Producto'
+            });
+          }
+
+          return {
+            id: product.id,
+            title: product.title || product.name || `Producto ${product.id}`,
+            description: product.description || '',
+            price: product.price || 0,
+            slug: product.slug || `producto-${product.id}`,
+            images: images,
+            category: product.categories && product.categories.length > 0 ? {
+              id: product.categories[0].id,
+              name: product.categories[0].name
+            } : null,
+            store: product.store ? {
+              id: product.store.id,
+              name: product.store.name
+            } : null
+          };
+        });
 
         return {
           data: transformedProducts,
