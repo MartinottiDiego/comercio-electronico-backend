@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "recommendations",
+  "info": {
+    "singularName": "recommendation",
+    "pluralName": "recommendations",
+    "displayName": "Recommendation",
+    "description": "Cache for product recommendations"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "userId": {
+      "type": "string",
+      "required": true
+    },
+    "context": {
+      "type": "string",
+      "required": true
+    },
+    "productId": {
+      "type": "string"
+    },
+    "categoryId": {
+      "type": "string"
+    },
+    "recommendedProducts": {
+      "type": "json",
+      "required": true
+    },
+    "algorithm": {
+      "type": "enumeration",
+      "enum": [
+        "collaborative",
+        "content_based",
+        "popularity",
+        "hybrid"
+      ],
+      "required": true
+    },
+    "score": {
+      "type": "decimal"
+    },
+    "expiresAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+} 

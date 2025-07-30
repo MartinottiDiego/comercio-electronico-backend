@@ -4,51 +4,41 @@
   "info": {
     "singularName": "user-behavior",
     "pluralName": "user-behaviors",
-    "displayName": "User Behavior"
+    "displayName": "User Behavior",
+    "description": "Track user interactions and behavior patterns"
   },
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "userId": {
       "type": "string",
       "required": true
     },
-    "sessionId": {
-      "type": "string",
-      "required": true
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
     },
     "action": {
       "type": "enumeration",
       "enum": [
         "view",
         "add_to_cart",
+        "remove_from_cart",
         "purchase",
-        "search",
         "favorite",
-        "abandon"
+        "search",
+        "category_view"
       ],
       "required": true
     },
-    "productId": {
-      "type": "string"
+    "context": {
+      "type": "string",
+      "required": true
     },
-    "categoryId": {
-      "type": "string"
-    },
-    "searchTerm": {
-      "type": "string"
-    },
-    "price": {
-      "type": "decimal"
-    },
-    "sessionDuration": {
-      "type": "integer"
-    },
-    "deviceType": {
-      "type": "string"
-    },
-    "location": {
+    "sessionId": {
       "type": "string"
     },
     "timestamp": {
@@ -57,14 +47,6 @@
     },
     "metadata": {
       "type": "json"
-    },
-    "encrypted": {
-      "type": "boolean",
-      "default": false
-    },
-    "anonymized": {
-      "type": "boolean",
-      "default": false
     }
   }
 } 

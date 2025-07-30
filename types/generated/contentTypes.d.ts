@@ -1237,6 +1237,47 @@ export interface ApiProfileProfile extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiRecommendationRecommendation
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'recommendations';
+  info: {
+    description: 'Cache for product recommendations';
+    displayName: 'Recommendation';
+    pluralName: 'recommendations';
+    singularName: 'recommendation';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    algorithm: Schema.Attribute.Enumeration<
+      ['collaborative', 'content_based', 'popularity', 'hybrid']
+    > &
+      Schema.Attribute.Required;
+    categoryId: Schema.Attribute.String;
+    context: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    expiresAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::recommendation.recommendation'
+    > &
+      Schema.Attribute.Private;
+    metadata: Schema.Attribute.JSON;
+    productId: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    recommendedProducts: Schema.Attribute.JSON & Schema.Attribute.Required;
+    score: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    userId: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
 export interface ApiRefundRefund extends Struct.CollectionTypeSchema {
   collectionName: 'refunds';
   info: {
@@ -1519,6 +1560,7 @@ export interface ApiUserBehaviorUserBehavior
   extends Struct.CollectionTypeSchema {
   collectionName: 'user_behaviors';
   info: {
+    description: 'Track user interactions and behavior patterns';
     displayName: 'User Behavior';
     pluralName: 'user-behaviors';
     singularName: 'user-behavior';
@@ -1528,30 +1570,31 @@ export interface ApiUserBehaviorUserBehavior
   };
   attributes: {
     action: Schema.Attribute.Enumeration<
-      ['view', 'add_to_cart', 'purchase', 'search', 'favorite', 'abandon']
+      [
+        'view',
+        'add_to_cart',
+        'remove_from_cart',
+        'purchase',
+        'favorite',
+        'search',
+        'category_view',
+      ]
     > &
       Schema.Attribute.Required;
-    anonymized: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    categoryId: Schema.Attribute.String;
+    context: Schema.Attribute.String & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    deviceType: Schema.Attribute.String;
-    encrypted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::user-behavior.user-behavior'
     > &
       Schema.Attribute.Private;
-    location: Schema.Attribute.String;
     metadata: Schema.Attribute.JSON;
-    price: Schema.Attribute.Decimal;
-    productId: Schema.Attribute.String;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
-    searchTerm: Schema.Attribute.String;
-    sessionDuration: Schema.Attribute.Integer;
-    sessionId: Schema.Attribute.String & Schema.Attribute.Required;
+    sessionId: Schema.Attribute.String;
     timestamp: Schema.Attribute.DateTime & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -2091,6 +2134,7 @@ declare module '@strapi/strapi' {
       'api::product-variant.product-variant': ApiProductVariantProductVariant;
       'api::product.product': ApiProductProduct;
       'api::profile.profile': ApiProfileProfile;
+      'api::recommendation.recommendation': ApiRecommendationRecommendation;
       'api::refund.refund': ApiRefundRefund;
       'api::review.review': ApiReviewReview;
       'api::stock-reservation.stock-reservation': ApiStockReservationStockReservation;
