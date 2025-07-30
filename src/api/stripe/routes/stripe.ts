@@ -67,6 +67,8 @@ export default {
       },
     },
     // Webhook de Stripe
+    // Comentado para evitar conflictos - usar /api/webhook/stripe en su lugar
+    /*
     {
       method: 'POST',
       path: '/stripe/webhook',
@@ -77,5 +79,6 @@ export default {
         middlewares: [],
       },
     },
+    */
   ],
 }; 

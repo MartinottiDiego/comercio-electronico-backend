@@ -52,13 +52,13 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
     }
 
     // Verificar que el producto existe
-    const product = await strapi.entityService.findOne('api::product.product', productId);
+    const product = await strapi.entityService.findOne('api::product.product', productId as string);
     if (!product) {
       return ctx.notFound('Product not found');
     }
 
     const data: any = {
-      product: productId,
+      product: product.id, // Usar el documentId del producto
     };
 
     // Si hay usuario autenticado
@@ -69,7 +69,7 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
       const existingEntry = await strapi.entityService.findMany('api::favorite.favorite', {
         filters: { 
           user: user.id,
-          product: productId
+          product: { id: { $eq: product.id } } // Usar el documentId del producto
         }
       });
 
@@ -85,7 +85,7 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
         filters: { 
           sessionId,
           user: null,
-          product: productId
+          product: { id: { $eq: product.id } } // Usar el documentId del producto
         }
       });
 
@@ -144,7 +144,13 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
       return ctx.badRequest('Product ID is required');
     }
 
-    let filters: any = { product: productId };
+    // Primero buscar el producto para obtener su documentId
+    const product = await strapi.entityService.findOne('api::product.product', productId as string);
+    if (!product) {
+      return ctx.notFound('Product not found');
+    }
+
+    let filters: any = { product: { id: { $eq: product.id } } }; // Usar el documentId del producto
 
     if (user) {
       filters.user = user.id;
@@ -181,7 +187,13 @@ export default factories.createCoreController('api::favorite.favorite', ({ strap
       return ctx.badRequest('Product ID is required');
     }
 
-    let filters: any = { product: productId };
+    // Primero buscar el producto para obtener su documentId
+    const product = await strapi.entityService.findOne('api::product.product', productId as string);
+    if (!product) {
+      return { data: { isFavorite: false } };
+    }
+
+    let filters: any = { product: { id: { $eq: product.id } } }; // Usar el documentId del producto
 
     if (user) {
       filters.user = user.id;

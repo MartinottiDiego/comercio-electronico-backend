@@ -9,9 +9,6 @@ export default {
     try {
       const { items, customerEmail, successUrl, cancelUrl, metadata } = ctx.request.body;
       
-      console.log('[Stripe Controller] Items recibidos:', items);
-      console.log('[Stripe Controller] Metadata recibida:', metadata);
-      
       // Extraer direcciones del metadata
       let shippingAddress = null;
       let billingAddress = null;
@@ -19,7 +16,6 @@ export default {
       if (metadata?.shipping_address) {
         try {
           shippingAddress = JSON.parse(metadata.shipping_address);
-          console.log('[Stripe Controller] Shipping address:', shippingAddress);
         } catch (error) {
           console.error('[Stripe Controller] Error parsing shipping address:', error);
         }
@@ -28,7 +24,6 @@ export default {
       if (metadata?.billing_address) {
         try {
           billingAddress = JSON.parse(metadata.billing_address);
-          console.log('[Stripe Controller] Billing address:', billingAddress);
         } catch (error) {
           console.error('[Stripe Controller] Error parsing billing address:', error);
         }
@@ -46,7 +41,7 @@ export default {
         return ctx.badRequest('Success and cancel URLs are required');
       }
 
-            // Crear o buscar cliente en Stripe
+      // Crear o buscar cliente en Stripe
       let customer;
       try {
         // Buscar cliente existente por email
@@ -57,7 +52,6 @@ export default {
         
         if (existingCustomers.data.length > 0) {
           customer = existingCustomers.data[0];
-          console.log('[Stripe Controller] Cliente existente encontrado:', customer.id);
         } else {
           // Crear nuevo cliente
           customer = await stripe.customers.create({
@@ -88,7 +82,6 @@ export default {
               source: 'strapi-ecommerce',
             },
           });
-          console.log('[Stripe Controller] Nuevo cliente creado:', customer.id);
         }
       } catch (error) {
         console.error('[Stripe Controller] Error creando/buscando cliente:', error);
@@ -101,7 +94,6 @@ export default {
       const reservationIds = [];
 
       for (const item of items) {
-        console.log(`[Stripe Controller] Validando item:`, item);
         
         // Validar producto usando el servicio
         const validation = await strapi.service('api::product.product').validateProduct(
@@ -142,17 +134,6 @@ export default {
         });
       }
 
-      console.log('🔵 [CHECKOUT] Creating session with metadata:', {
-        reservation_ids: JSON.stringify(reservationIds),
-        items_count: validatedItems.length.toString(),
-        session_id: sessionId,
-        items_summary: validatedItems.map(item => ({
-          id: item.productId,
-          qty: item.quantity,
-          price: item.price
-        })).slice(0, 3).map(item => `${item.id}:${item.qty}`).join(',')
-      });
-
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: validatedItems.map((item: any) => {
@@ -171,19 +152,10 @@ export default {
                 !productImage.includes('10.') &&
                 !productImage.includes('172.')) {
               finalImage = productImage;
-              console.log(`[Stripe Controller] Usando imagen pública: ${productImage}`);
             } else {
-              console.log(`[Stripe Controller] Imagen local detectada, omitiendo: ${productImage}`);
+              // console.log(`[Stripe Controller] Imagen local detectada, omitiendo: ${productImage}`);
             }
           }
-          
-          console.log(`[Stripe Controller] Creando line item para:`, {
-            name: productName,
-            image: finalImage,
-            description: productDescription,
-            price: item.price,
-            quantity: item.quantity
-          });
           
           return {
             price_data: {
@@ -214,7 +186,7 @@ export default {
             id: item.productId,
             qty: item.quantity,
             price: item.price
-          })).slice(0, 3).map(item => `${item.id}:${item.qty}`).join(',')
+          })).map(item => `${item.id}:${item.qty}`).join(',')
         },
         allow_promotion_codes: true,
         // Configurar recolección de direcciones
@@ -225,9 +197,6 @@ export default {
         // No crear cliente automáticamente ya que lo creamos manualmente
         customer_creation: customer ? undefined : 'always',
       });
-
-      console.log('✅ [CHECKOUT] Session created successfully:', session.id);
-      console.log('✅ [CHECKOUT] Session metadata:', session.metadata);
 
       ctx.body = {
         success: true,
@@ -589,91 +558,115 @@ export default {
        if (metadata?.items_summary) {
         try {
           const itemsSummary = metadata.items_summary;
+          console.log('🔵 [WEBHOOK] Raw items_summary:', itemsSummary);
+          
           const items = itemsSummary.split(',').map(item => {
             const [productId, qty] = item.split(':');
             return { productId, quantity: parseInt(qty) };
           });
 
-          console.log('🔵 [WEBHOOK] Processing items:', items);
+          console.log('🔵 [WEBHOOK] Parsed items:', items);
 
-                     for (const item of items) {
-             console.log('🔵 [WEBHOOK] Looking for product with ID:', item.productId);
-             
-             // Buscar el producto por documentId primero, luego por id
-             let product = null;
-             
-             try {
-               // Intentar buscar por documentId usando query raw
-               const productsByDocumentId = await strapi.db.query('api::product.product').findMany({
-                 where: { documentId: item.productId },
-                 limit: 1
-               });
-               
-               console.log('🔵 [WEBHOOK] Products found by documentId:', productsByDocumentId.length);
-               
-               if (productsByDocumentId.length > 0) {
-                 product = productsByDocumentId[0];
-                 console.log('🔵 [WEBHOOK] Found product by documentId:', product.id, product.title);
-               } else {
-                 // Si no se encuentra por documentId, intentar por id
-                 console.log('🔵 [WEBHOOK] Trying to find by ID:', item.productId);
-                 product = await strapi.entityService.findOne('api::product.product', item.productId);
-                 if (product) {
-                   console.log('🔵 [WEBHOOK] Found product by ID:', product.id, product.title);
-                 }
-               }
-             } catch (error) {
-               console.error(`❌ [WEBHOOK] Error finding product ${item.productId}:`, error);
-             }
+          // Procesar cada item individualmente usando el índice del lineItems de Stripe
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const stripeItem = lineItems?.data?.[i];
             
-                         if (product) {
-               console.log('🔵 [WEBHOOK] Found product:', product.id, product.title);
-               const orderItemData: any = {
-                 data: {
-                   name: product.title || product.name || `Producto ${product.id}`,
-                   image: product.image?.url || product.thumbnail?.url || null,
-                   quantity: item.quantity,
-                   price: product.price,
-                   subtotal: product.price * item.quantity,
-                   order: order.id,
-                   product: product.id
-                 }
-               };
+            console.log(`🔵 [WEBHOOK] Processing item ${i + 1}/${items.length}:`, item);
+            console.log(`🔵 [WEBHOOK] Corresponding Stripe item:`, stripeItem);
+            
+            // Buscar el producto por documentId primero, luego por id
+            let product = null;
+            
+            try {
+              // Intentar buscar por documentId usando query raw
+              const productsByDocumentId = await strapi.db.query('api::product.product').findMany({
+                where: { documentId: item.productId },
+                limit: 1
+              });
+              
+              console.log(`🔵 [WEBHOOK] Products found by documentId for ${item.productId}:`, productsByDocumentId.length);
+              
+              if (productsByDocumentId.length > 0) {
+                product = productsByDocumentId[0];
+                console.log(`🔵 [WEBHOOK] Found product by documentId:`, product.id, product.title);
+              } else {
+                // Si no se encuentra por documentId, intentar por id
+                console.log(`🔵 [WEBHOOK] Trying to find by ID:`, item.productId);
+                product = await strapi.entityService.findOne('api::product.product', item.productId);
+                if (product) {
+                  console.log(`🔵 [WEBHOOK] Found product by ID:`, product.id, product.title);
+                }
+              }
+            } catch (error) {
+              console.error(`❌ [WEBHOOK] Error finding product ${item.productId}:`, error);
+            }
+           
+            if (product) {
+              console.log(`🔵 [WEBHOOK] Found product:`, product.id, product.title);
+              
+              // Mejorar la lógica de obtención de imagen
+              let productImage = null;
+              if (product.Media && product.Media.url) {
+                productImage = product.Media.url;
+              } else if (product.thumbnail && product.thumbnail.url) {
+                productImage = product.thumbnail.url;
+              } else if (product.image && product.image.url) {
+                productImage = product.image.url;
+              } else if (product.photos && product.photos.length > 0 && product.photos[0].url) {
+                productImage = product.photos[0].url;
+              } else if (product.images && product.images.length > 0 && product.images[0].url) {
+                productImage = product.images[0].url;
+              }
+              
+              // Normalizar la URL de la imagen si es local
+              if (productImage && productImage.startsWith('/uploads/')) {
+                productImage = `http://localhost:1337${productImage}`;
+              }
+              
+              console.log(`🔵 [WEBHOOK] Product found, normalizing image...`);
+              console.log(`🔵 [WEBHOOK] Normalized image URL:`, productImage);
+              
+              const orderItemData: any = {
+                data: {
+                  name: product.title || product.name || `Producto ${product.id}`,
+                  image: productImage,
+                  quantity: item.quantity,
+                  price: product.price,
+                  subtotal: product.price * item.quantity,
+                  order: order.id,
+                  product: product.id
+                }
+              };
 
-               console.log('🔵 [WEBHOOK] Creating order item with data:', JSON.stringify(orderItemData, null, 2));
+              console.log(`🔵 [WEBHOOK] Creating order item with data:`, JSON.stringify(orderItemData, null, 2));
 
-               const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
-               console.log('✅ [WEBHOOK] Order item created successfully:', orderItem.id);
-             } else {
-               console.error(`❌ [WEBHOOK] Product not found: ${item.productId}`);
-               
-               // Intentar crear order item usando información de Stripe line_items
-               if (lineItems && lineItems.data && lineItems.data.length > 0) {
-                 const stripeItem = lineItems.data.find(stripeItem => 
-                   stripeItem.description && stripeItem.description.includes('Reloj Inteligente Pro')
-                 );
-                 
-                 if (stripeItem) {
-                   console.log('🔵 [WEBHOOK] Creating order item from Stripe data');
-                   const orderItemData: any = {
-                     data: {
-                       name: stripeItem.description || `Producto ${item.productId}`,
-                       image: null,
-                       quantity: item.quantity,
-                       price: stripeItem.amount_total / 100, // Convertir de centavos
-                       subtotal: (stripeItem.amount_total / 100) * item.quantity,
-                       order: order.id,
-                       product: null // No tenemos el producto en BD
-                     }
-                   };
+              const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
+              console.log(`✅ [WEBHOOK] Order item created successfully:`, orderItem.id);
+            } else {
+              console.error(`❌ [WEBHOOK] Product not found: ${item.productId}`);
+              
+              // Intentar crear order item usando información de Stripe line_items
+              if (stripeItem) {
+                console.log(`🔵 [WEBHOOK] Creating order item from Stripe data for item ${i + 1}`);
+                const orderItemData: any = {
+                  data: {
+                    name: stripeItem.description || `Producto ${item.productId}`,
+                    image: null,
+                    quantity: item.quantity,
+                    price: stripeItem.amount_total / 100, // Convertir de centavos
+                    subtotal: (stripeItem.amount_total / 100) * item.quantity,
+                    order: order.id,
+                    product: null // No tenemos el producto en BD
+                  }
+                };
 
-                   console.log('🔵 [WEBHOOK] Creating order item from Stripe with data:', JSON.stringify(orderItemData, null, 2));
+                console.log(`🔵 [WEBHOOK] Creating order item from Stripe with data:`, JSON.stringify(orderItemData, null, 2));
 
-                   const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
-                   console.log('✅ [WEBHOOK] Order item created from Stripe data successfully:', orderItem.id);
-                 }
-               }
-             }
+                const orderItem = await strapi.entityService.create('api::order-item.order-item', orderItemData);
+                console.log(`✅ [WEBHOOK] Order item created from Stripe data successfully:`, orderItem.id);
+              }
+            }
           }
         } catch (error) {
           console.error('Error creating order items:', error);
