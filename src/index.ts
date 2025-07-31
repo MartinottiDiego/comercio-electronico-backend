@@ -1,5 +1,3 @@
-
-
 export default {
   /**
    * An asynchronous register function that runs before
@@ -20,12 +18,13 @@ export default {
     // Cron job para limpiar reservas expiradas cada 5 minutos
     setInterval(async () => {
       try {
-                    await strapi.service('api::product.product').cleanupExpiredReservations();
+        await strapi.service('api::product.product').cleanupExpiredReservations();
       } catch (error) {
         console.error('Error in cleanup cron job:', error);
       }
     }, 5 * 60 * 1000); // 5 minutos
 
     console.log('🕐 Stock reservation cleanup cron job started');
+    console.log('🔔 Sistema de notificaciones inicializado (simplificado)');
   },
 };

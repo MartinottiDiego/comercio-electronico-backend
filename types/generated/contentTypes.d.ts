@@ -650,9 +650,19 @@ export interface ApiNotificationNotification
     draftAndPublish: false;
   };
   attributes: {
+    actionText: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    actionUrl: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 500;
+      }>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    emailSentAt: Schema.Attribute.DateTime;
+    isEmailSent: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -665,6 +675,11 @@ export interface ApiNotificationNotification
         maxLength: 1000;
       }>;
     metadata: Schema.Attribute.JSON;
+    notificationStatus: Schema.Attribute.Enumeration<
+      ['unread', 'read', 'archived']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'unread'>;
     order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
     priority: Schema.Attribute.Enumeration<
       ['low', 'normal', 'high', 'urgent']
@@ -673,11 +688,12 @@ export interface ApiNotificationNotification
       Schema.Attribute.DefaultTo<'normal'>;
     publishedAt: Schema.Attribute.DateTime;
     readAt: Schema.Attribute.DateTime;
+    recipientEmail: Schema.Attribute.String & Schema.Attribute.Required;
+    recipientRole: Schema.Attribute.Enumeration<
+      ['comprador', 'tienda', 'admin']
+    >;
     scheduledAt: Schema.Attribute.DateTime;
     sentAt: Schema.Attribute.DateTime;
-    status: Schema.Attribute.Enumeration<['unread', 'read', 'archived']> &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'unread'>;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
@@ -685,13 +701,22 @@ export interface ApiNotificationNotification
       }>;
     type: Schema.Attribute.Enumeration<
       [
-        'order_status',
-        'payment_status',
-        'shipping_update',
+        'order_created',
+        'order_confirmed',
+        'order_shipped',
+        'order_delivered',
+        'order_cancelled',
+        'payment_received',
+        'payment_failed',
+        'refund_requested',
+        'refund_approved',
+        'refund_rejected',
+        'review_request',
         'promotion',
         'system',
         'security',
-        'review_request',
+        'stock_alert',
+        'new_sale',
       ]
     > &
       Schema.Attribute.Required;
@@ -1234,6 +1259,45 @@ export interface ApiProfileProfile extends Struct.CollectionTypeSchema {
       'oneToOne',
       'plugin::users-permissions.user'
     >;
+  };
+}
+
+export interface ApiPushSubscriptionPushSubscription
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'push_subscriptions';
+  info: {
+    displayName: 'Push Subscription';
+    pluralName: 'push-subscriptions';
+    singularName: 'push-subscription';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    auth: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    endpoint: Schema.Attribute.String & Schema.Attribute.Required;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    lastUsed: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::push-subscription.push-subscription'
+    > &
+      Schema.Attribute.Private;
+    p256dh: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    subscriptionData: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    userAgent: Schema.Attribute.String;
   };
 }
 
@@ -2092,6 +2156,10 @@ export interface PluginUsersPermissionsUser
     profile: Schema.Attribute.Relation<'oneToOne', 'api::profile.profile'>;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    pushSubscriptions: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::push-subscription.push-subscription'
+    >;
     refunds: Schema.Attribute.Relation<'oneToMany', 'api::refund.refund'>;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
     reviews: Schema.Attribute.Relation<'oneToMany', 'api::review.review'>;
@@ -2134,6 +2202,7 @@ declare module '@strapi/strapi' {
       'api::product-variant.product-variant': ApiProductVariantProductVariant;
       'api::product.product': ApiProductProduct;
       'api::profile.profile': ApiProfileProfile;
+      'api::push-subscription.push-subscription': ApiPushSubscriptionPushSubscription;
       'api::recommendation.recommendation': ApiRecommendationRecommendation;
       'api::refund.refund': ApiRefundRefund;
       'api::review.review': ApiReviewReview;
