@@ -12,7 +12,7 @@ export default {
         return ctx.badRequest('Stripe signature is required');
       }
       
-      const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
+      const rawBody = (ctx.request.body as any)[Symbol.for('unparsedBody')];
       let event;
       
       try {
@@ -23,7 +23,7 @@ export default {
         );
       } catch (signatureError) {
         console.error('❌ [WEBHOOK] Signature verification failed:', signatureError.message);
-        event = ctx.request.body;
+        event = ctx.request.body as any;
       }
       
       switch (event.type) {
