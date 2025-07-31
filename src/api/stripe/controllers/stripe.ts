@@ -7,7 +7,7 @@ export default {
    */
   async createCheckoutSession(ctx: Context) {
     try {
-      const { items, customerEmail, successUrl, cancelUrl, metadata } = ctx.request.body;
+      const { items, customerEmail, successUrl, cancelUrl, metadata } = ctx.request.body as any;
       
       // Extraer direcciones del metadata
       let shippingAddress = null;
@@ -222,7 +222,7 @@ export default {
    */
   async createPaymentIntent(ctx: Context) {
     try {
-      const { amount, currency, customerEmail, metadata } = ctx.request.body;
+      const { amount, currency, customerEmail, metadata } = ctx.request.body as any;
 
       if (!amount || amount <= 0) {
         return ctx.badRequest('Valid amount is required');
@@ -322,7 +322,7 @@ export default {
    */
   async createCustomer(ctx: Context) {
     try {
-      const { email, name } = ctx.request.body;
+      const { email, name } = ctx.request.body as any;
 
       if (!email) {
         return ctx.badRequest('Email is required');
@@ -351,7 +351,7 @@ export default {
    */
   async createRefund(ctx: Context) {
     try {
-      const { paymentIntentId, amount, reason } = ctx.request.body;
+      const { paymentIntentId, amount, reason } = ctx.request.body as any;
 
       if (!paymentIntentId) {
         return ctx.badRequest('Payment Intent ID is required');
@@ -380,7 +380,7 @@ export default {
     try {
       console.log('🔵 [WEBHOOK] Webhook received');
       const signature = ctx.request.headers['stripe-signature'] as string;
-      const payload = ctx.request.body;
+      const payload = ctx.request.body as any;
 
       console.log('🔵 [WEBHOOK] Headers:', Object.keys(ctx.request.headers));
       console.log('🔵 [WEBHOOK] Has signature:', !!signature);
