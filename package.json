@@ -13,7 +13,6 @@
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
-    
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
@@ -21,7 +20,6 @@
     "docker:shell": "docker-compose exec strapi sh",
     "docker:rebuild": "docker-compose down && docker-compose build --no-cache && docker-compose up -d",
     "docker:clean": "docker-compose down -v && docker system prune -f",
-    
     "docker:dev": "docker-compose up",
     "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
   },
@@ -29,18 +27,22 @@
     "@strapi/plugin-cloud": "5.17.0",
     "@strapi/plugin-users-permissions": "5.17.0",
     "@strapi/strapi": "5.17.0",
+    "@types/nodemailer": "^6.4.17",
     "axios": "^1.10.0",
+    "nodemailer": "^7.0.5",
     "pg": "8.8.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "stripe": "^18.3.0",
-    "styled-components": "^6.0.0"
+    "styled-components": "^6.0.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/web-push": "^3.6.4",
     "typescript": "^5"
   },
   "engines": {

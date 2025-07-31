@@ -15,13 +15,22 @@
       "type": "enumeration",
       "required": true,
       "enum": [
-        "order_status",
-        "payment_status",
-        "shipping_update",
+        "order_created",
+        "order_confirmed",
+        "order_shipped",
+        "order_delivered",
+        "order_cancelled",
+        "payment_received",
+        "payment_failed",
+        "refund_requested",
+        "refund_approved",
+        "refund_rejected",
+        "review_request",
         "promotion",
         "system",
         "security",
-        "review_request"
+        "stock_alert",
+        "new_sale"
       ]
     },
     "title": {
@@ -45,7 +54,7 @@
         "urgent"
       ]
     },
-    "status": {
+    "notificationStatus": {
       "type": "enumeration",
       "required": true,
       "default": "unread",
@@ -77,6 +86,33 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::order.order"
+    },
+    "recipientEmail": {
+      "type": "string",
+      "required": true
+    },
+    "recipientRole": {
+      "type": "enumeration",
+      "enum": [
+        "comprador",
+        "tienda",
+        "admin"
+      ]
+    },
+    "isEmailSent": {
+      "type": "boolean",
+      "default": false
+    },
+    "emailSentAt": {
+      "type": "datetime"
+    },
+    "actionUrl": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "actionText": {
+      "type": "string",
+      "maxLength": 100
     }
   }
 }

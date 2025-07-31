@@ -2,87 +2,73 @@
  * order controller
  */
 
-import { factories } from '@strapi/strapi'
-import { Context } from 'koa';
+import { factories } from '@strapi/strapi';
 
-export default {
-  /**
-   * Obtener órdenes de un usuario específico
-   */
-  async getUserOrders(ctx: Context) {
+export default factories.createCoreController('api::order.order', ({ strapi }) => ({
+  // Método para obtener órdenes de un usuario específico
+  async getUserOrders(ctx) {
     try {
       const { userId } = ctx.params;
+      const { page = '1', pageSize = '10' } = ctx.query;
       
-      if (!userId) {
-        return ctx.badRequest('User ID is required');
-      }
-
+      console.log(`🔍 Buscando órdenes para usuario: ${userId}`);
+      
       const orders = await strapi.entityService.findMany('api::order.order', {
         filters: {
-          user: {
-            id: {
-              $eq: userId
-            }
-          }
+          user: userId
         },
-        populate: {
-          order_items: true,
-          shipping_address: true,
-          billing_address: true,
-          payments: true,
-          user: {
-            populate: ['profile']
-          }
-        },
-        sort: { createdAt: 'desc' }
+        populate: ['order_items', 'shipping_address', 'billing_address'],
+        sort: { createdAt: 'desc' },
+        pagination: {
+          page: parseInt(page as string),
+          pageSize: parseInt(pageSize as string)
+        }
       });
-
-      ctx.body = {
-        success: true,
-        data: orders
+      
+      console.log(`✅ Encontradas ${orders.length} órdenes para usuario ${userId}`);
+      
+      return {
+        data: orders,
+        meta: {
+          pagination: {
+            page: parseInt(page as string),
+            pageSize: parseInt(pageSize as string),
+            pageCount: Math.ceil(orders.length / parseInt(pageSize as string)),
+            total: orders.length
+          }
+        }
       };
+      
     } catch (error) {
-      console.error('Error getting user orders:', error);
-      ctx.throw(500, 'Failed to get user orders');
+      console.error('❌ Error obteniendo órdenes del usuario:', error);
+      ctx.throw(500, 'Error interno del servidor');
     }
   },
 
-  /**
-   * Obtener una orden específica con todos sus detalles
-   */
-  async getOrderById(ctx: Context) {
+  // Método para obtener una orden específica
+  async getOrderById(ctx) {
     try {
       const { id } = ctx.params;
       
-      if (!id) {
-        return ctx.badRequest('Order ID is required');
-      }
-
+      console.log(`🔍 Buscando orden: ${id}`);
+      
       const order = await strapi.entityService.findOne('api::order.order', id, {
-        populate: {
-          order_items: {
-            populate: ['product']
-          },
-          shipping_address: true,
-          billing_address: true,
-          payments: true,
-          user: {
-            populate: ['profile']
-          }
-        }
+        populate: ['order_items', 'shipping_address', 'billing_address', 'user']
       });
-
+      
       if (!order) {
-        return ctx.notFound('Order not found');
+        return ctx.notFound('Orden no encontrada');
       }
-
-      ctx.body = {
-        success: true,
+      
+      console.log(`✅ Orden encontrada: ${order.orderNumber}`);
+      
+      return {
         data: order
       };
+      
     } catch (error) {
-      console.error('Error getting order:', error);
-      ctx.throw(500, 'Failed to get order');
+      console.error('❌ Error obteniendo orden:', error);
+      ctx.throw(500, 'Error interno del servidor');
     }
   }
-}; 
+})); 

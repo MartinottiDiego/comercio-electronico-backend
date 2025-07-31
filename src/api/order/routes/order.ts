@@ -4,27 +4,30 @@
 
 import { factories } from '@strapi/strapi';
 
-export default {
-  routes: [
-    {
-      method: 'GET',
-      path: '/orders/user/:userId',
-      handler: 'order.getUserOrders',
-      config: {
-        auth: false,
-        policies: [],
-        middlewares: [],
-      },
+export default factories.createCoreRouter('api::order.order', {
+  config: {
+    find: {
+      policies: [],
+      middlewares: [],
     },
-    {
-      method: 'GET',
-      path: '/orders/:id',
-      handler: 'order.getOrderById',
-      config: {
-        auth: false,
-        policies: [],
-        middlewares: [],
-      },
+    findOne: {
+      policies: [],
+      middlewares: [],
     },
-  ],
-}; 
+    create: {
+      policies: [],
+      middlewares: [],
+    },
+    update: {
+      policies: [],
+      middlewares: [],
+    },
+    delete: {
+      policies: [],
+      middlewares: [],
+    },
+  },
+  only: ['find', 'findOne', 'create', 'update', 'delete'],
+  except: [],
+  prefix: '',
+}); 
