@@ -1,9 +1,9 @@
-export default ({ env }) => ({
-  upload: {
+export default {
+  'users-permissions': {
     config: {
-      providerOptions: {
-        baseUrl: env('PUBLIC_URL', 'http://localhost:1337'),
+      jwt: {
+        expiresIn: '30d',
       },
     },
   },
-});
+};
