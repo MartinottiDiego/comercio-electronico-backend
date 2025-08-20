@@ -70,22 +70,47 @@ export default ({ strapi }: { strapi: any }) => {
       try {
         const { userId, productId, action, context, sessionId, metadata } = ctx.request.body;
 
+
+
         if (!userId || !action || !context) {
           return ctx.badRequest('userId, action, and context are required');
         }
 
+        // Convertir userId a string si es necesario y sanitizarlo
+        let userIdString = String(userId).trim();
+        
+        // Si el userId es muy largo (como un JWT o token), usar solo los primeros caracteres
+        if (userIdString.length > 255) {
+          userIdString = userIdString.substring(0, 255);
+        }
+        
+        // Preparar datos para crear el comportamiento
+        const behaviorData: any = {
+          userId: userIdString,
+          action,
+          context,
+          sessionId: sessionId || null,
+          timestamp: new Date(),
+          metadata: metadata || {}
+        };
+
+        // Solo agregar product si productId está presente y es válido
+        if (productId && !isNaN(parseInt(productId))) {
+          behaviorData.product = parseInt(productId);
+        }
+
+        // Verificar si el content type existe
+        const contentType = strapi.getModel('api::user-behavior.user-behavior');
+        if (!contentType) {
+          return ctx.internalServerError('Content type not found');
+        }
+
         // Por ahora, solo registramos el comportamiento básico
-        await strapi.entityService.create('api::user-behavior.user-behavior', {
-          data: {
-            userId,
-            product: productId ? parseInt(productId) : undefined,
-            action,
-            context,
-            sessionId,
-            timestamp: new Date(),
-            metadata: metadata || {}
-          }
+        const result = await strapi.entityService.create('api::user-behavior.user-behavior', {
+          data: behaviorData
         });
+
+
 
         return { success: true, message: 'Behavior tracked successfully' };
       } catch (error) {

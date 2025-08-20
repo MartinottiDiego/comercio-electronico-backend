@@ -119,6 +119,16 @@
       "relation": "oneToMany",
       "target": "api::push-subscription.push-subscription",
       "mappedBy": "user"
+    },
+    "authProvider": {
+      "type": "string",
+      "required": false,
+      "default": "local",
+      "enum": ["local", "google"]
+    },
+    "isGoogleUser": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

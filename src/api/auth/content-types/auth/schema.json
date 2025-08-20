@@ -1,0 +1,25 @@
+{
+  "kind": "singleType",
+  "collectionName": "auth",
+  "info": {
+    "singularName": "auth",
+    "pluralName": "auths",
+    "displayName": "Auth"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {}
+}
+
+
+
+
+
+
+
+
+
+
+
