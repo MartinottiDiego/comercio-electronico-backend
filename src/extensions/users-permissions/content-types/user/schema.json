@@ -125,6 +125,10 @@
       "required": false,
       "default": "local",
       "enum": ["local", "google"]
+    },
+    "isGoogleUser": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

@@ -2,7 +2,7 @@ export default {
   routes: [
     {
       method: 'POST',
-      path: '/api/custom-auth/forgot-password',
+      path: '/custom-auth/forgot-password',
       handler: 'auth.forgotPassword',
       config: {
         auth: false, // Endpoint público
@@ -18,7 +18,7 @@ export default {
     },
     {
       method: 'POST',
-      path: '/api/custom-auth/reset-password',
+      path: '/custom-auth/reset-password',
       handler: 'auth.resetPassword',
       config: {
         auth: false, // Endpoint público
@@ -32,16 +32,6 @@ export default {
         },
       },
     },
-    {
-      method: 'POST',
-      path: '/api/auth/google/nextauth',
-      handler: 'google-auth.nextAuthSync',
-      config: {
-        auth: false,
-        policies: [],
-        middlewares: [],
-        description: 'Sincroniza usuario Google desde NextAuth',
-      },
-    },
+
   ],
 };

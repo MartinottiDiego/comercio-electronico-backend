@@ -180,9 +180,9 @@ export default ({ strapi }: { strapi: any }) => ({
      }
    },
 
-   // MÉTODO PRIVADO para generar token de reset
-   generateResetToken(): string {
-     const crypto = require('crypto');
-     return crypto.randomBytes(32).toString('hex');
-   },
- });
+     // MÉTODO PRIVADO para generar token de reset
+  generateResetToken(): string {
+    const crypto = require('crypto');
+    return crypto.randomBytes(32).toString('hex');
+  },
+});
