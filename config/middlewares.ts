@@ -1,5 +1,4 @@
 export default [
-  'strapi::logger',
   'strapi::errors',
   'strapi::security',
   {
@@ -11,6 +10,7 @@ export default [
     },
   },
   'strapi::poweredBy',
+  'strapi::logger',
   'strapi::query',
   {
     name: 'strapi::body',

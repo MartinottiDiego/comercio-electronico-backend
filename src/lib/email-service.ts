@@ -38,15 +38,18 @@ export class EmailService {
         },
       });
     } else {
-      // Usar SMTP tradicional
+      // Usar SMTP tradicional (Gmail configurado)
       this.transporter = require('nodemailer').createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: false,
+        secure: false, // true for port 465, false for other ports
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
+          user: process.env.SMTP_USER, // diego.mrtinotti.dev@gmail.com
+          pass: process.env.SMTP_PASS, // App password configurado
         },
+        tls: {
+          rejectUnauthorized: false
+        }
       });
     }
   }
@@ -230,6 +233,130 @@ Sistema de notificaciones automáticas
     };
     
     return this.sendNotificationEmail(notification);
+  }
+
+  /**
+   * Enviar email para solicitud de reembolso creada (para tienda)
+   */
+  async sendRefundRequestEmail(refund: any, order: any, customer: any, storeEmail: string): Promise<boolean> {
+    const notification = {
+      recipientEmail: storeEmail,
+      title: `🔄 Nueva Solicitud de Reembolso - Pedido #${order.orderNumber}`,
+      message: `${customer.firstName} ${customer.lastName} ha solicitado un reembolso de €${refund.amount} para el pedido #${order.orderNumber}. Motivo: ${this.getReasonLabel(refund.reason)}. Revisa la solicitud en tu dashboard.`,
+      actionUrl: `/dashboard/reembolsos`,
+      actionText: 'Revisar Solicitud',
+      priority: 'high'
+    };
+    
+    return this.sendNotificationEmail(notification);
+  }
+
+  /**
+   * Enviar email para actualización de estado de reembolso (para cliente)
+   */
+  async sendRefundStatusUpdateEmail(refund: any, order: any, customer: any): Promise<boolean> {
+    const statusMessages = {
+      'completed': `¡Excelente noticia! Tu reembolso de €${refund.amount} ha sido procesado exitosamente.`,
+      'rejected': `Lamentablemente, tu solicitud de reembolso ha sido rechazada por la tienda.`,
+      'processing': `Tu solicitud de reembolso ha sido aprobada y está siendo procesada.`,
+      'failed': `Hubo un problema al procesar tu reembolso. Contactaremos contigo pronto.`
+    };
+
+    const statusEmojis = {
+      'completed': '✅',
+      'rejected': '❌',
+      'processing': '🔄',
+      'failed': '⚠️'
+    };
+
+    const emoji = statusEmojis[refund.status] || 'ℹ️';
+    const message = statusMessages[refund.status] || `Tu reembolso ha cambiado a estado: ${refund.status}`;
+    
+    const notification = {
+      recipientEmail: customer.email,
+      title: `${emoji} Actualización de Reembolso - Pedido #${order.orderNumber}`,
+      message: message,
+      actionUrl: `/historial-compras`,
+      actionText: 'Ver Historial',
+      priority: refund.status === 'completed' ? 'high' : 'normal'
+    };
+    
+    return this.sendNotificationEmail(notification);
+  }
+
+  /**
+   * Enviar email especializado para reembolso completado
+   */
+  async sendRefundCompletedEmail(refund: any, order: any, customer: any): Promise<boolean> {
+    const notification = {
+      recipientEmail: customer.email,
+      title: `✅ ¡Reembolso Completado! - Pedido #${order.orderNumber}`,
+      message: `Tu reembolso de €${refund.amount} ha sido procesado exitosamente. El dinero será devuelto a tu método de pago original en un plazo de 3-5 días hábiles.`,
+      actionUrl: `/historial-compras`,
+      actionText: 'Ver Detalles',
+      priority: 'high'
+    };
+    
+    return this.sendNotificationEmail(notification);
+  }
+
+  /**
+   * Método principal para enviar emails de reembolso
+   */
+  async sendEmail(options: {
+    to: string;
+    subject: string;
+    template: string;
+    data: any;
+  }): Promise<boolean> {
+    try {
+      const { to, subject, template, data } = options;
+      
+      switch (template) {
+        case 'refund-request-created':
+          return this.sendRefundRequestEmail(data.refund, data.order, data.customer, to);
+        
+        case 'refund-status-updated':
+          return this.sendRefundStatusUpdateEmail(data.refund, data.order, data.customer);
+        
+        case 'refund-completed':
+          return this.sendRefundCompletedEmail(data.refund, data.order, data.customer);
+        
+        default:
+          // Fallback a notificación genérica
+          const notification = {
+            recipientEmail: to,
+            title: subject,
+            message: JSON.stringify(data),
+            priority: 'normal'
+          };
+          return this.sendNotificationEmail(notification);
+      }
+    } catch (error) {
+      console.error('❌ Error enviando email de reembolso:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Obtener label del motivo de reembolso
+   */
+  private getReasonLabel(reason: string): string {
+    const reasons: Record<string, string> = {
+      'defective_product': 'Producto defectuoso',
+      'wrong_size': 'Talla incorrecta',
+      'not_as_described': 'No coincide con la descripción',
+      'damaged': 'Producto dañado en el envío',
+      'wrong_item': 'Producto incorrecto recibido',
+      'quality_issue': 'Problema de calidad',
+      'change_mind': 'Cambié de opinión',
+      'duplicate': 'Pedido duplicado',
+      'fraudulent': 'Pedido fraudulento',
+      'requested_by_customer': 'Solicitado por el cliente',
+      'other': 'Otro motivo'
+    };
+    
+    return reasons[reason] || reason;
   }
 
   async verifyConnection(): Promise<boolean> {

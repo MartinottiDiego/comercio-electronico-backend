@@ -36,6 +36,15 @@ export default {
         case 'payment_intent.payment_failed':
           await this.handlePaymentIntentFailed(event.data.object);
           break;
+        case 'charge.refunded':
+          await this.handleChargeRefunded(event.data.object);
+          break;
+        case 'refund.updated':
+          await this.handleRefundUpdated(event.data.object);
+          break;
+        case 'charge.dispute.created':
+          await this.handleChargeDisputeCreated(event.data.object);
+          break;
       }
       
       ctx.body = { received: true };
@@ -450,4 +459,189 @@ export default {
     
     return '';
   },
+
+  /**
+   * Manejar evento de reembolso completado
+   */
+  async handleChargeRefunded(charge: any) {
+    try {
+      console.log('💰 Charge Refunded:', charge.id);
+      
+      // Buscar el pago original
+      const payments = await strapi.entityService.findMany('api::payment.payment', {
+        filters: {
+          paymentIntentId: charge.payment_intent
+        },
+        populate: ['order']
+      });
+      
+      if (payments.length === 0) {
+        console.warn('⚠️ No payment found for refunded charge:', charge.id);
+        return;
+      }
+      
+      const payment = payments[0];
+      
+      // Buscar el reembolso en nuestra base de datos
+      const refunds = await strapi.entityService.findMany('api::refund.refund', {
+        filters: {
+          payment: {
+            id: payment.id
+          },
+          status: {
+            $in: ['processing', 'pending']
+          }
+        }
+      }) as any[];
+      
+      // Actualizar todos los reembolsos encontrados
+      for (const refund of refunds) {
+        await strapi.entityService.update('api::refund.refund', refund.id, {
+          data: {
+            status: 'completed',
+            processedAt: new Date(),
+            metadata: {
+              ...(refund.metadata as any || {}),
+              stripeChargeId: charge.id,
+              stripeRefundId: charge.refunds.data[0]?.id,
+              completedAt: new Date().toISOString(),
+              webhookProcessed: true
+            }
+          }
+        });
+        
+        console.log(`✅ Refund ${refund.refundId} marked as completed`);
+      }
+      
+      // Actualizar el estado del pago
+      const totalRefunded = charge.amount_refunded;
+      const isFullyRefunded = totalRefunded >= charge.amount;
+      
+      await strapi.entityService.update('api::payment.payment', payment.id, {
+        data: {
+          status: isFullyRefunded ? 'refunded' : ('partially_refunded' as any),
+          gatewayResponse: {
+            ...(payment.gatewayResponse as any || {}),
+            refundedAmount: totalRefunded / 100,
+            lastRefundAt: new Date().toISOString()
+          }
+        }
+      });
+      
+      // Actualizar el estado de la orden si es reembolso completo
+      if (isFullyRefunded && (payment as any).order) {
+        await this.updateOrderStatus((payment as any).order.id, 'refunded');
+      }
+      
+      console.log('✅ Charge refund processed successfully');
+    } catch (error) {
+      console.error('❌ Error handling charge refunded:', error);
+    }
+  },
+
+  /**
+   * Manejar evento de actualización de reembolso
+   */
+  async handleRefundUpdated(refundObject: any) {
+    try {
+      console.log('🔄 Refund Updated:', refundObject.id);
+      
+      const refunds = await strapi.entityService.findMany('api::refund.refund', {
+        filters: {
+          $or: [
+            {
+              metadata: {
+                $contains: refundObject.id
+              }
+            },
+            {
+              refundId: {
+                $contains: refundObject.metadata?.refundId
+              }
+            }
+          ]
+        }
+      });
+      
+      if (refunds.length === 0) {
+        console.warn('⚠️ No refund found for Stripe refund:', refundObject.id);
+        return;
+      }
+      
+      const refund = refunds[0];
+      let newStatus = refund.status;
+      
+      switch (refundObject.status) {
+        case 'succeeded':
+          newStatus = 'completed';
+          break;
+        case 'failed':
+          newStatus = 'failed';
+          break;
+        case 'pending':
+          newStatus = 'processing';
+          break;
+      }
+      
+      await strapi.entityService.update('api::refund.refund', refund.id, {
+        data: {
+          status: newStatus,
+          metadata: {
+            ...(refund.metadata as any || {}),
+            stripeRefundId: refundObject.id,
+            stripeStatus: refundObject.status,
+            stripeUpdatedAt: new Date().toISOString()
+          }
+        }
+      });
+      
+      console.log(`✅ Refund ${refund.refundId} updated to status: ${newStatus}`);
+    } catch (error) {
+      console.error('❌ Error handling refund updated:', error);
+    }
+  },
+
+  /**
+   * Manejar evento de disputa creada
+   */
+  async handleChargeDisputeCreated(dispute: any) {
+    try {
+      console.log('⚖️ Charge Dispute Created:', dispute.id);
+      
+      const payments = await strapi.entityService.findMany('api::payment.payment', {
+        filters: {
+          paymentIntentId: dispute.payment_intent
+        },
+        populate: ['order']
+      });
+      
+      if (payments.length === 0) {
+        console.warn('⚠️ No payment found for disputed charge:', dispute.charge);
+        return;
+      }
+      
+      const payment = payments[0];
+      
+      await strapi.entityService.update('api::payment.payment', payment.id, {
+        data: {
+          status: 'disputed' as any,
+          gatewayResponse: {
+            ...(payment.gatewayResponse as any || {}),
+            dispute: {
+              disputeId: dispute.id,
+              reason: dispute.reason,
+              amount: dispute.amount / 100,
+              status: dispute.status
+            },
+            disputedAt: new Date().toISOString()
+          }
+        }
+      });
+      
+      console.log(`⚠️ Dispute created for payment ${payment.id} - Amount: ${dispute.amount / 100}`);
+      console.log('✅ Dispute processed successfully');
+    } catch (error) {
+      console.error('❌ Error handling charge dispute created:', error);
+    }
+  }
 };

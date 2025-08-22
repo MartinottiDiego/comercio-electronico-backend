@@ -1053,7 +1053,15 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     refunds: Schema.Attribute.Relation<'oneToMany', 'api::refund.refund'>;
     status: Schema.Attribute.Enumeration<
-      ['pending', 'processing', 'completed', 'failed', 'refunded']
+      [
+        'pending',
+        'processing',
+        'completed',
+        'failed',
+        'refunded',
+        'partially_refunded',
+        'disputed',
+      ]
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'pending'>;
@@ -1486,7 +1494,7 @@ export interface ApiRefundRefund extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
     status: Schema.Attribute.Enumeration<
-      ['pending', 'processing', 'completed', 'failed', 'cancelled']
+      ['pending', 'processing', 'completed', 'failed', 'cancelled', 'rejected']
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'pending'>;

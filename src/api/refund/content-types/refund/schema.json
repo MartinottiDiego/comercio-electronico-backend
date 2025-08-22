@@ -47,7 +47,8 @@
         "processing",
         "completed",
         "failed",
-        "cancelled"
+        "cancelled",
+        "rejected"
       ],
       "default": "pending",
       "required": true

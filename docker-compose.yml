@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15
+    container_name: mi-nuevo-backend-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-comercio-electronico-local-docker}
+      POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-Pacita10@}
+    ports:
+      - "${DATABASE_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - strapi-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   strapi:
     build:
       context: .
@@ -17,7 +37,7 @@ services:
       
       # Database Configuration - PostgreSQL
       DATABASE_CLIENT: ${DATABASE_CLIENT:-postgres}
-      DATABASE_HOST: ${DATABASE_HOST:-host.docker.internal}
+      DATABASE_HOST: ${DATABASE_HOST:-postgres}
       DATABASE_PORT: ${DATABASE_PORT:-5432}
       DATABASE_NAME: ${DATABASE_NAME}
       DATABASE_USERNAME: ${DATABASE_USERNAME}
@@ -52,6 +72,10 @@ services:
     networks:
       - strapi-network
     
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
     # Dependencias de salud
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]
@@ -68,6 +92,7 @@ services:
 volumes:
   strapi_uploads:
   strapi_cache:
+  postgres_data:
 
 # Red personalizada
 networks:
