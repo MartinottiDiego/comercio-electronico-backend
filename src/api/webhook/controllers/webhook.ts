@@ -93,27 +93,12 @@ export default {
 
   async createPaymentRecord(orderId: number, session: any, userId: string | null) {
     try {
-      const paymentData: any = {
-        order: orderId,
-        amount: session.amount_total / 100,
-        currency: session.currency?.toUpperCase() || 'EUR',
-        paymentMethod: 'stripe',
-        status: 'completed',
-        stripePaymentIntentId: session.payment_intent,
-        stripeSessionId: session.id,
-        // Agregar campos requeridos faltantes
-        date: new Date(),
-        method: 'stripe',
-        paymentIntentId: session.payment_intent || session.id,
-      };
-      
-      if (userId) {
-        paymentData.user = userId;
-      }
-      
-      const payment = await strapi.entityService.create('api::payment.payment', {
-        data: paymentData
-      });
+      // Usar el servicio unificado para crear el payment
+      const payment = await strapi.service('api::payment.payment').createPaymentWithStripeData(
+        session,
+        orderId,
+        userId
+      );
       
       console.log('✅ Payment record created:', payment.id);
       return payment;
@@ -123,14 +108,14 @@ export default {
     }
   },
 
-  async updateOrderStatus(orderId: number, status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'failed') {
+  async updateOrderStatus(orderId: number, orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'failed') {
     try {
       await strapi.entityService.update('api::order.order', orderId, {
-        data: { status }
+        data: { orderStatus }
       });
-      console.log(`✅ Order ${orderId} status updated to: ${status}`);
+      console.log(`✅ Order ${orderId} orderStatus updated to: ${orderStatus}`);
     } catch (error) {
-      console.error(`❌ Error updating order status:`, error);
+      console.error(`❌ Error updating order orderStatus:`, error);
     }
   },
 
@@ -223,30 +208,15 @@ export default {
         }
       }
       
-      // 7. Crear la orden
-      const orderData: any = {
-        stripeSessionId: session.id,
-        totalAmount: session.amount_total / 100,
-        currency: session.currency,
-        status: 'pending',
-        paymentStatus: 'paid',
-        shippingAddress: shippingAddressId,
-        billingAddress: billingAddressId,
-        // Agregar campos requeridos faltantes
-        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        subtotal: session.amount_total / 100,
-        total: session.amount_total / 100, // Agregar el campo total requerido
-      };
-      
-      if (userId) {
-        orderData.user = userId;
-      }
-      
-      console.log('📋 Creating order with data:', orderData);
-      
-      const order = await strapi.entityService.create('api::order.order', {
-        data: orderData
-      });
+      // 7. Crear la orden usando el servicio unificado
+      const order = await strapi.service('api::order.order').createOrderWithStripeData(
+        session,
+        userId,
+        {
+          shipping: shippingAddressId,
+          billing: billingAddressId
+        }
+      );
       
       console.log('✅ Order created successfully:', order.id);
       
@@ -353,11 +323,11 @@ export default {
       
       // 12. Actualizar estado de la orden
       if (failedItems === 0) {
-        await this.updateOrderStatus(parseInt(order.id.toString()), 'confirmed');
+        await strapi.service('api::order.order').updateOrderStatus(parseInt(order.id.toString()), 'confirmed');
       } else if (processedItems > 0) {
-        await this.updateOrderStatus(parseInt(order.id.toString()), 'processing');
+        await strapi.service('api::order.order').updateOrderStatus(parseInt(order.id.toString()), 'processing');
       } else {
-        await this.updateOrderStatus(parseInt(order.id.toString()), 'failed');
+        await strapi.service('api::order.order').updateOrderStatus(parseInt(order.id.toString()), 'failed');
       }
       
       console.log(`🎉 Checkout session processed successfully! Processed: ${processedItems}, Failed: ${failedItems}`);
@@ -519,7 +489,7 @@ export default {
       
       await strapi.entityService.update('api::payment.payment', payment.id, {
         data: {
-          status: isFullyRefunded ? 'refunded' : ('partially_refunded' as any),
+          paymentStatus: isFullyRefunded ? 'refunded' : ('partially_refunded' as any),
           gatewayResponse: {
             ...(payment.gatewayResponse as any || {}),
             refundedAmount: totalRefunded / 100,
@@ -530,7 +500,7 @@ export default {
       
       // Actualizar el estado de la orden si es reembolso completo
       if (isFullyRefunded && (payment as any).order) {
-        await this.updateOrderStatus((payment as any).order.id, 'refunded');
+        await strapi.service('api::order.order').updateOrderStatus((payment as any).order.id, 'refunded');
       }
       
       console.log('✅ Charge refund processed successfully');
@@ -624,7 +594,7 @@ export default {
       
       await strapi.entityService.update('api::payment.payment', payment.id, {
         data: {
-          status: 'disputed' as any,
+          paymentStatus: 'disputed' as any,
           gatewayResponse: {
             ...(payment.gatewayResponse as any || {}),
             dispute: {

@@ -927,6 +927,20 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     orderNumber: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
+    orderStatus: Schema.Attribute.Enumeration<
+      [
+        'pending',
+        'confirmed',
+        'processing',
+        'shipped',
+        'delivered',
+        'cancelled',
+        'refunded',
+        'failed',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     paymentStatus: Schema.Attribute.Enumeration<
       ['pending', 'paid', 'failed', 'refunded', 'partially_refunded']
@@ -951,20 +965,6 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 100;
       }>;
-    status: Schema.Attribute.Enumeration<
-      [
-        'pending',
-        'confirmed',
-        'processing',
-        'shipped',
-        'delivered',
-        'cancelled',
-        'refunded',
-        'failed',
-      ]
-    > &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'pending'>;
     subtotal: Schema.Attribute.Decimal &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -1050,9 +1050,7 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     netAmount: Schema.Attribute.Decimal;
     order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
     paymentIntentId: Schema.Attribute.String & Schema.Attribute.Required;
-    publishedAt: Schema.Attribute.DateTime;
-    refunds: Schema.Attribute.Relation<'oneToMany', 'api::refund.refund'>;
-    status: Schema.Attribute.Enumeration<
+    paymentStatus: Schema.Attribute.Enumeration<
       [
         'pending',
         'processing',
@@ -1065,6 +1063,8 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'pending'>;
+    publishedAt: Schema.Attribute.DateTime;
+    refunds: Schema.Attribute.Relation<'oneToMany', 'api::refund.refund'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

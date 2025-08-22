@@ -5,35 +5,67 @@
 import { factories } from '@strapi/strapi';
 
 export default factories.createCoreService('api::order.order', ({ strapi }) => ({
-  // Métodos básicos sin notificaciones por ahora
-  async createOrder(orderData) {
+  /**
+   * Crear una orden con todos los campos necesarios
+   */
+  async createOrderWithStripeData(stripeData: any, userId?: string | null, addresses?: any) {
     try {
-      const order = await strapi.entityService.create('api::order.order', { 
+      const orderData = {
+        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        orderStatus: 'pending' as 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'refunded' | 'failed',
+        paymentStatus: stripeData.payment_status === 'paid' ? 'paid' : 'pending' as 'pending' | 'paid' | 'failed' | 'refunded' | 'partially_refunded',
+        subtotal: stripeData.amount_total / 100,
+        tax: 0,
+        shipping: 0,
+        discount: 0,
+        total: stripeData.amount_total / 100,
+        currency: stripeData.currency?.toUpperCase() || 'EUR',
+        shippingMethod: 'Standard',
+        trackingNumber: null,
+        estimatedDelivery: null,
+        notes: '',
+        customerNotes: '',
+        metadata: stripeData.metadata || {},
+        stripeSessionId: stripeData.id,
+        totalAmount: stripeData.amount_total / 100,
+        ...(userId && { user: userId }),
+        ...(addresses?.shipping && { shipping_address: addresses.shipping }),
+        ...(addresses?.billing && { billing_address: addresses.billing })
+      };
+
+      console.log('🔵 [Order Service] Creating order with data:', JSON.stringify(orderData, null, 2));
+
+      const order = await strapi.entityService.create('api::order.order', {
         data: orderData
       });
-      
-      console.log('🛒 Orden creada:', order.id);
-      
-      // TODO: Implementar notificaciones cuando se resuelvan los errores de tipos
-      
+
+      console.log('✅ [Order Service] Order created successfully:', order.id);
       return order;
     } catch (error) {
-      console.error('❌ Error creando orden:', error);
+      console.error('❌ [Order Service] Error creating order:', error);
       throw error;
     }
   },
 
-  async updateOrderStatus(orderId, newStatus) {
+  /**
+   * Actualizar el estado de una orden
+   */
+  async updateOrderStatus(orderId: number, orderStatus: string, paymentStatus?: string) {
     try {
+      const updateData: any = { orderStatus };
+      
+      if (paymentStatus) {
+        updateData.paymentStatus = paymentStatus;
+      }
+
       const order = await strapi.entityService.update('api::order.order', orderId, {
-        data: { status: newStatus }
+        data: updateData
       });
-      
-      console.log(`📦 Estado de orden actualizado: ${orderId} -> ${newStatus}`);
-      
+
+      console.log(`✅ [Order Service] Order ${orderId} status updated to: ${orderStatus}`);
       return order;
     } catch (error) {
-      console.error('❌ Error actualizando estado de orden:', error);
+      console.error(`❌ [Order Service] Error updating order status:`, error);
       throw error;
     }
   },

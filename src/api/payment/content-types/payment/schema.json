@@ -27,7 +27,7 @@
       "required": true,
       "default": "EUR"
     },
-    "status": {
+    "paymentStatus": {
       "type": "enumeration",
       "enum": [
         "pending",

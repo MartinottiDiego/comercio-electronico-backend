@@ -499,48 +499,23 @@ export default {
         }
       }
 
-      // Crear la orden usando any para evitar problemas de tipos
-      const orderData: any = {
-        data: {
-          orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-          status: paymentStatus === 'paid' ? 'confirmed' : 'pending',
-          paymentStatus: paymentStatus === 'paid' ? 'paid' : 'pending',
-          subtotal: amountTotal / 100, // Convertir de centavos
-          tax: 0,
-          shipping: 0,
-          discount: 0,
-          total: amountTotal / 100, // Convertir de centavos
-          currency: currency,
-          metadata: metadata,
-          user: user ? user.id : null
+      // Crear la orden usando el servicio unificado
+      const order = await strapi.service('api::order.order').createOrderWithStripeData(
+        session,
+        user ? user.id : null,
+        {
+          shipping: shippingAddress,
+          billing: billingAddress
         }
-      };
-
-      console.log('🔵 [WEBHOOK] Creating order with data:', JSON.stringify(orderData, null, 2));
-
-      const order = await strapi.entityService.create('api::order.order', orderData);
+      );
       console.log('✅ [WEBHOOK] Order created successfully:', order.id);
 
-      // Crear el payment usando any para evitar problemas de tipos
-      const paymentData: any = {
-        data: {
-          paymentIntentId: session.payment_intent || `pi_${Date.now()}`,
-          checkoutSessionId: session.id,
-          amount: amountTotal / 100,
-          currency: currency,
-          status: paymentStatus === 'paid' ? 'completed' : 'pending',
-          method: 'stripe',
-          date: new Date(),
-          customerEmail: customerEmail,
-          customerName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : customerEmail,
-          metadata: metadata,
-          order: order.id
-        }
-      };
-
-      console.log('🔵 [WEBHOOK] Creating payment with data:', JSON.stringify(paymentData, null, 2));
-
-      const payment = await strapi.entityService.create('api::payment.payment', paymentData);
+      // Crear el payment usando el servicio unificado
+      const payment = await strapi.service('api::payment.payment').createPaymentWithStripeData(
+        session,
+        order.id,
+        user ? user.id : null
+      );
       console.log('✅ [WEBHOOK] Payment created successfully:', payment.id);
 
              // Crear order_items basado en los metadatos
@@ -709,18 +684,13 @@ export default {
         // Actualizar el estado del payment
         await strapi.entityService.update('api::payment.payment', payment.id, {
           data: {
-            status: 'completed'
+            paymentStatus: 'completed'
           }
         });
 
         // Buscar la orden asociada al payment
         if (payment.order) {
-          await strapi.entityService.update('api::order.order', payment.order, {
-            data: {
-              status: 'confirmed',
-              paymentStatus: 'paid'
-            }
-          });
+          await strapi.service('api::order.order').updateOrderStatus(payment.order, 'confirmed', 'paid');
         }
       }
     } catch (error) {
@@ -744,18 +714,13 @@ export default {
         
         await strapi.entityService.update('api::payment.payment', payment.id, {
           data: {
-            status: 'failed'
+            paymentStatus: 'failed'
           }
         });
 
         // Buscar la orden asociada al payment
         if (payment.order) {
-          await strapi.entityService.update('api::order.order', payment.order, {
-            data: {
-              status: 'failed',
-              paymentStatus: 'failed'
-            }
-          });
+          await strapi.service('api::order.order').updateOrderStatus(payment.order, 'failed', 'failed');
         }
 
         // Liberar las reservas de stock
