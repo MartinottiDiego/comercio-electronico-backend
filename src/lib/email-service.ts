@@ -28,7 +28,7 @@ export class EmailService {
     
     if (this.useResend) {
       // Usar Resend
-      this.transporter = require('nodemailer').createTransporter({
+      this.transporter = require('nodemailer').createTransport({
         host: 'smtp.resend.com',
         port: 587,
         secure: false,
@@ -39,7 +39,7 @@ export class EmailService {
       });
     } else {
       // Usar SMTP tradicional
-      this.transporter = require('nodemailer').createTransporter({
+      this.transporter = require('nodemailer').createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT || '587'),
         secure: false,
@@ -77,9 +77,67 @@ export class EmailService {
   }
 
   private generateNotificationHTML(notification: any): string {
-    const statusColor = notification.priority === 'high' ? '#ff4444' : 
-                       notification.priority === 'urgent' ? '#cc0000' : '#007bff';
+    const statusColor = notification.priority === 'high' ? '#28a745' : 
+                       notification.priority === 'urgent' ? '#dc3545' : '#007bff';
     
+    // Template especial para reset de contraseña
+    if (notification.title.includes('Restablecer Contraseña')) {
+      return `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <title>${notification.title}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: white; }
+            .header { background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center; }
+            .content { background: #ffffff; padding: 30px 20px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .button { display: inline-block; padding: 15px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; transition: background 0.3s; }
+            .button:hover { background: #218838; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; color: #856404; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 24px;">🔐 ${notification.title}</h1>
+            </div>
+            <div class="content">
+              <p style="font-size: 16px; margin-bottom: 20px;">${notification.message}</p>
+              
+              <div class="warning">
+                <strong>⚠️ Importante:</strong> Este enlace expirará en 24 horas por tu seguridad.
+              </div>
+              
+              ${notification.actionUrl ? `
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}${notification.actionUrl}" class="button">
+                    🔑 ${notification.actionText || 'Restablecer Contraseña'}
+                  </a>
+                </div>
+                <p style="font-size: 14px; color: #666; word-break: break-all;">
+                  O copia y pega este enlace: <br>
+                  <strong>${process.env.FRONTEND_URL || 'http://localhost:3000'}${notification.actionUrl}</strong>
+                </p>
+              ` : ''}
+              
+              <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                Si no solicitaste este cambio, puedes ignorar este email. Tu contraseña no será modificada.
+              </p>
+            </div>
+            <div class="footer">
+              <p>Este es un email automático del sistema WaaZaar.</p>
+              <p>Fecha: ${new Date().toLocaleString('es-ES')}</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    }
+    
+    // Template general para otras notificaciones
     return `
       <!DOCTYPE html>
       <html>

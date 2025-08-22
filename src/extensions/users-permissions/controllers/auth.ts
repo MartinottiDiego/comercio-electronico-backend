@@ -20,12 +20,31 @@ export default () => ({
         });
       }
 
-      // Generar token de reset usando el servicio nativo de Strapi
-      const resetToken = await strapi.plugins['users-permissions'].services.user.generateResetPasswordToken(user);
+      // Generar token de reset simple
+      const crypto = require('crypto');
+      const resetToken = crypto.randomBytes(32).toString('hex');
       
-      // Enviar email usando NUESTRO servicio personalizado
-      const emailService = strapi.plugin('users-permissions').service('email');
-      await emailService.sendResetPasswordEmail(user, resetToken);
+      // Guardar el token en el usuario
+      await strapi.query('plugin::users-permissions.user').update({
+        where: { id: user.id },
+        data: { resetPasswordToken: resetToken }
+      });
+      
+      // Usar el EmailService principal
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+      
+      // Crear notificación para email de reset
+      const resetNotification = {
+        recipientEmail: user.email,
+        title: '🔐 Restablecer Contraseña - WaaZaar',
+        message: `Hola ${user.username || user.email}, has solicitado restablecer tu contraseña. Haz clic en el enlace para continuar.`,
+        actionUrl: `/reset-password?token=${resetToken}`,
+        actionText: 'Restablecer Contraseña',
+        priority: 'high'
+      };
+      
+      await emailService.sendNotificationEmail(resetNotification);
 
       strapi.log.info(`Email de reset enviado a: ${user.email}`);
 

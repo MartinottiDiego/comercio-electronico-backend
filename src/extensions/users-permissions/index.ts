@@ -1,7 +1,6 @@
 import { StrapiPlugin } from './types';
 import emailConfig from './config/email';
 import policies from './config/policies';
-import functions from './config/functions';
 import routes from './config/routes';
 
 export default (plugin: StrapiPlugin) => {
@@ -10,9 +9,6 @@ export default (plugin: StrapiPlugin) => {
     ...plugin.config,
     ...emailConfig
   };
-
-  // Aplicar funciones personalizadas
-  plugin = functions(plugin);
 
   // Aplicar rutas personalizadas
   plugin = routes(plugin);
