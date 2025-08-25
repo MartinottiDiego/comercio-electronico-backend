@@ -58,14 +58,15 @@ export class PushNotificationService {
       });
 
       const result = await webpush.sendNotification(subscription, payload);
-      console.log('✅ Notificación push enviada:', { statusCode: result.statusCode, headers: result.headers });
-      return result.statusCode === 200;
-    } catch (error: any) {
-      console.error('❌ Error enviando notificación push:', error);
-      if (error.statusCode === 410) {
-        console.log('🔄 Suscripción expirada, marcando como inactiva');
-        await this.markSubscriptionAsInactive(subscription.endpoint);
+      if (result.statusCode === 200) {
+        // Marcar suscripción como activa si no lo está
+        return true;
+      } else if (result.statusCode === 410) {
+        // Suscripción expirada, marcarla como inactiva
+        return false;
       }
+    } catch (error) {
+      console.error('Error sending push notification:', error);
       return false;
     }
   }
@@ -75,11 +76,13 @@ export class PushNotificationService {
       subscriptions.map(sub => this.sendPushNotification(sub, data))
     );
     
-    const success = results.filter(r => r.status === 'fulfilled' && r.value).length;
-    const failed = results.length - success;
-    
-    console.log(`📱 Notificaciones push enviadas: ${success} exitosas, ${failed} fallidas`);
-    return { success, failed };
+    const totalSuccess = results.filter(r => r.status === 'fulfilled' && r.value).length;
+    const totalFailed = results.length - totalSuccess;
+
+    return {
+      success: totalSuccess,
+      failed: totalFailed
+    };
   }
 
   async sendPushNotificationToUser(userId: string | number, data: PushNotificationData): Promise<boolean> {
@@ -89,7 +92,6 @@ export class PushNotificationService {
       });
 
       if (subscriptions.length === 0) {
-        console.log(`⚠️ Usuario ${userId} no tiene suscripciones push activas`);
         return false;
       }
 
@@ -101,7 +103,7 @@ export class PushNotificationService {
       const result = await this.sendPushNotificationToMultiple(pushSubscriptions, data);
       return result.success > 0;
     } catch (error) {
-      console.error('❌ Error enviando notificación push a usuario:', error);
+      console.error('Error sending push notification to user:', error);
       return false;
     }
   }
@@ -131,23 +133,27 @@ export class PushNotificationService {
         }
       }
 
-      console.log(`📱 Notificaciones push enviadas a rol ${role}: ${totalSuccess} exitosas, ${totalFailed} fallidas`);
       return { success: totalSuccess, failed: totalFailed };
     } catch (error) {
-      console.error('❌ Error enviando notificación push a rol:', error);
+      console.error('Error sending push notification to role:', error);
       return { success: 0, failed: 0 };
     }
   }
 
-  private async markSubscriptionAsInactive(endpoint: string): Promise<void> {
+  async markSubscriptionAsInactive(endpoint: string): Promise<void> {
     try {
-      await strapi.db.query('api::push-subscription.push-subscription').updateMany({
-        where: { endpoint },
-        data: { isActive: false }
+      // Buscar suscripciones por endpoint y marcarlas como inactivas
+      const subscriptions = await strapi.entityService.findMany('api::push-subscription.push-subscription', {
+        filters: { endpoint }
       });
-      console.log('✅ Suscripción marcada como inactiva:', endpoint);
+      
+      for (const subscription of subscriptions) {
+        await strapi.entityService.update('api::push-subscription.push-subscription', subscription.id, {
+          data: { isActive: false }
+        });
+      }
     } catch (error) {
-      console.error('❌ Error marcando suscripción como inactiva:', error);
+      console.error('Error marking subscription as inactive:', error);
     }
   }
 
@@ -156,17 +162,22 @@ export class PushNotificationService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-      const result = await strapi.db.query('api::push-subscription.push-subscription').deleteMany({
-        where: {
+      const expiredSubscriptions = await strapi.entityService.findMany('api::push-subscription.push-subscription', {
+        filters: {
           isActive: false,
           updatedAt: { $lt: cutoffDate }
         }
       });
 
-      console.log(`🗑️ ${result.count} suscripciones inactivas eliminadas`);
-      return result.count;
+      let deletedCount = 0;
+      for (const subscription of expiredSubscriptions) {
+        await strapi.entityService.delete('api::push-subscription.push-subscription', subscription.id);
+        deletedCount++;
+      }
+
+      return deletedCount;
     } catch (error) {
-      console.error('❌ Error limpiando suscripciones inactivas:', error);
+      console.error('Error cleaning up inactive subscriptions:', error);
       return 0;
     }
   }
@@ -193,7 +204,7 @@ export class PushNotificationService {
 
       return { total, active, inactive, byRole };
     } catch (error) {
-      console.error('❌ Error obteniendo estadísticas de suscripciones:', error);
+      console.error('Error getting subscription stats:', error);
       return { total: 0, active: 0, inactive: 0, byRole: {} };
     }
   }

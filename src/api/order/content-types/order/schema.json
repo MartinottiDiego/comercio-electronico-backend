@@ -84,6 +84,9 @@
     "estimatedDelivery": {
       "type": "datetime"
     },
+    "deliveredAt": {
+      "type": "datetime"
+    },
     "notes": {
       "type": "text",
       "maxLength": 1000

@@ -40,7 +40,7 @@
       ],
       "required": true
     },
-    "status": {
+    "refundStatus": {
       "type": "enumeration",
       "enum": [
         "pending",

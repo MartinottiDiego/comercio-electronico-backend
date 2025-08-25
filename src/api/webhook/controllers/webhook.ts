@@ -100,7 +100,6 @@ export default {
         userId
       );
       
-      console.log('✅ Payment record created:', payment.id);
       return payment;
     } catch (error) {
       console.error('❌ Error creating payment record:', error);
@@ -113,7 +112,6 @@ export default {
       await strapi.entityService.update('api::order.order', orderId, {
         data: { orderStatus }
       });
-      console.log(`✅ Order ${orderId} orderStatus updated to: ${orderStatus}`);
     } catch (error) {
       console.error(`❌ Error updating order orderStatus:`, error);
     }
@@ -122,8 +120,6 @@ export default {
   // Funciones auxiliares para manejar eventos de webhook
   async handleCheckoutSessionCompleted(session: any) {
     try {
-      console.log('🔄 Processing checkout session:', session.id);
-      
       // 1. Validar datos de la sesión
       const sessionValidation = this.validateSessionData(session);
       if (!sessionValidation.isValid) {
@@ -133,7 +129,6 @@ export default {
       
       // 2. Obtener line_items de Stripe
       const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
-      console.log('📦 Line items from Stripe:', lineItems.data.length);
       
       if (lineItems.data.length === 0) {
         throw new Error('No line items found in session');
@@ -148,15 +143,11 @@ export default {
       const validatedItems = metadata.validated_items ? JSON.parse(metadata.validated_items) : [];
       const reservationIds = metadata.reservation_ids ? JSON.parse(metadata.reservation_ids) : [];
       
-      console.log('📋 Validated items:', validatedItems);
-      console.log('🔒 Reservation IDs:', reservationIds);
-      
       // 4. Crear mapeo de productos desde items_summary si no hay validated_items
       let productMapping: Array<{productId: string, quantity: number, reservationId: string | null}> = [];
       
       if (validatedItems.length === 0 && metadata.items_summary) {
         const itemsSummary = metadata.items_summary.split(',');
-        console.log('📝 Creating product mapping from summary:', itemsSummary);
         
         itemsSummary.forEach((item: string, index: number) => {
           const [productId, quantity] = item.split(':');
@@ -175,8 +166,6 @@ export default {
         }));
       }
       
-      console.log('🗺️ Product mapping created:', productMapping);
-      
       // 5. Validar el mapeo de productos
       const mappingValidation = this.validateProductMapping(productMapping, lineItems.data);
       if (!mappingValidation.isValid) {
@@ -193,7 +182,6 @@ export default {
       if (shippingAddress && shippingAddress.id) {
         try {
           shippingAddressId = shippingAddress.id;
-          console.log('📮 Shipping address ID:', shippingAddressId);
         } catch (error) {
           console.error('❌ Error with shipping address:', error);
         }
@@ -202,7 +190,6 @@ export default {
       if (billingAddress && billingAddress.id) {
         try {
           billingAddressId = billingAddress.id;
-          console.log('📮 Billing address ID:', billingAddressId);
         } catch (error) {
           console.error('❌ Error with billing address:', error);
         }
@@ -218,15 +205,12 @@ export default {
         }
       );
       
-      console.log('✅ Order created successfully:', order.id);
-      
       // 8. Procesar cada producto individualmente
       let processedItems = 0;
       let failedItems = 0;
       
       for (let i = 0; i < lineItems.data.length; i++) {
         const item = lineItems.data[i];
-        console.log(`🛍️ Processing item ${i + 1}/${lineItems.data.length}:`, item.description);
         
         // Obtener el mapeo correspondiente para este item
         const productMappingItem = productMapping[i];
@@ -237,15 +221,12 @@ export default {
         }
         
         let productId = productMappingItem.productId;
-        console.log('🔍 Original productId:', productId);
 
         // Si productId es un string (documentId), convertirlo al ID numérico de Strapi
         if (typeof productId === 'string' && isNaN(parseInt(productId))) {
-          console.log('🔄 Converting documentId to numeric ID:', productId);
           const numericProductId = await this.getProductIdByDocumentId(productId);
           if (numericProductId) {
             productId = numericProductId;
-            console.log('✅ Converted to numeric ID:', productId);
           } else {
             console.error('❌ Could not find product with documentId:', productId);
             failedItems++;
@@ -264,12 +245,9 @@ export default {
           continue;
         }
         
-        console.log('✅ Product found:', product.title);
-        
         // 9. Actualizar reservas de stock si existen
         const reservationId = productMappingItem.reservationId;
         if (reservationId) {
-          console.log('🔒 Processing stock reservation:', reservationId);
           try {
             const numericReservationId = await this.getStockReservationIdByReservationId(reservationId);
             if (numericReservationId) {
@@ -278,9 +256,8 @@ export default {
                   status: 'confirmed'
                 }
               });
-              console.log('✅ Stock reservation confirmed:', reservationId);
             } else {
-              console.log('⚠️ Stock reservation not found by reservationId:', reservationId);
+              // Reserva no encontrada, continuar sin confirmarla
             }
           } catch (error) {
             console.error('❌ Error confirming stock reservation:', reservationId, error);
@@ -303,14 +280,11 @@ export default {
           subtotal: item.amount_total / 100,
         };
         
-        console.log('📦 Creating order item:', orderItemData);
-        
         try {
           const orderItem = await strapi.entityService.create('api::order-item.order-item', {
             data: orderItemData
           });
           
-          console.log('✅ Order item created:', orderItem.id);
           processedItems++;
         } catch (error) {
           console.error('❌ Error creating order item:', error);
@@ -319,18 +293,61 @@ export default {
       }
       
       // 11. Crear registro de pago
-      await this.createPaymentRecord(parseInt(order.id.toString()), session, userId);
-      
-      // 12. Actualizar estado de la orden
-      if (failedItems === 0) {
-        await strapi.service('api::order.order').updateOrderStatus(parseInt(order.id.toString()), 'confirmed');
-      } else if (processedItems > 0) {
-        await strapi.service('api::order.order').updateOrderStatus(parseInt(order.id.toString()), 'processing');
-      } else {
-        await strapi.service('api::order.order').updateOrderStatus(parseInt(order.id.toString()), 'failed');
+      const payment = await strapi.entityService.create('api::payment.payment', {
+        data: {
+          paymentIntentId: session.payment_intent,
+          amount: session.amount_total / 100, // Convertir de centavos
+          currency: session.currency,
+          order: order.id,
+          date: new Date(),
+          paymentStatus: 'completed',
+          method: 'stripe',
+          metadata: {
+            sessionId: session.id,
+            customerEmail: session.customer_details?.email
+          }
+        }
+      });
+
+      // Actualizar estado de la orden
+      await strapi.entityService.update('api::order.order', order.id, {
+        data: {
+          orderStatus: 'confirmed',
+          paymentStatus: 'paid'
+        }
+      });
+
+      // Procesar sesión de checkout
+      if (session.mode === 'checkout.session.completed') {
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
+        
+        // Validar items y crear mapeo de productos
+        const validatedItems = lineItems.data.filter(item => 
+          item.price && item.quantity && item.quantity > 0
+        );
+
+        const reservationIds = validatedItems.map(item => 
+          item.price?.metadata?.reservationId
+        ).filter(Boolean);
+
+        // Crear mapeo de productos desde el resumen
+        const itemsSummary = validatedItems.map(item => ({
+          productId: item.price?.metadata?.productId,
+          quantity: item.quantity || 0,
+          price: (item.amount_total || 0) / 100
+        }));
+
+        const productMapping = itemsSummary.reduce((acc, item) => {
+          if (item.productId) {
+            acc[item.productId] = {
+              quantity: item.quantity,
+              price: item.price
+            };
+          }
+          return acc;
+        }, {} as Record<string, { quantity: number; price: number }>);
       }
       
-      console.log(`🎉 Checkout session processed successfully! Processed: ${processedItems}, Failed: ${failedItems}`);
       return order;
       
     } catch (error) {
@@ -340,11 +357,9 @@ export default {
   },
 
   async handlePaymentIntentSucceeded(paymentIntent: any) {
-    console.log('Payment intent succeeded:', paymentIntent.id);
   },
 
   async handlePaymentIntentFailed(paymentIntent: any) {
-    console.log('Payment intent failed:', paymentIntent.id);
   },
 
   async getProductIdByDocumentId(documentId: string): Promise<string | null> {
@@ -435,8 +450,6 @@ export default {
    */
   async handleChargeRefunded(charge: any) {
     try {
-      console.log('💰 Charge Refunded:', charge.id);
-      
       // Buscar el pago original
       const payments = await strapi.entityService.findMany('api::payment.payment', {
         filters: {
@@ -479,8 +492,6 @@ export default {
             }
           }
         });
-        
-        console.log(`✅ Refund ${refund.refundId} marked as completed`);
       }
       
       // Actualizar el estado del pago
@@ -503,7 +514,6 @@ export default {
         await strapi.service('api::order.order').updateOrderStatus((payment as any).order.id, 'refunded');
       }
       
-      console.log('✅ Charge refund processed successfully');
     } catch (error) {
       console.error('❌ Error handling charge refunded:', error);
     }
@@ -514,8 +524,6 @@ export default {
    */
   async handleRefundUpdated(refundObject: any) {
     try {
-      console.log('🔄 Refund Updated:', refundObject.id);
-      
       const refunds = await strapi.entityService.findMany('api::refund.refund', {
         filters: {
           $or: [
@@ -539,7 +547,7 @@ export default {
       }
       
       const refund = refunds[0];
-      let newStatus = refund.status;
+      let newStatus = refund.refundStatus;
       
       switch (refundObject.status) {
         case 'succeeded':
@@ -555,7 +563,7 @@ export default {
       
       await strapi.entityService.update('api::refund.refund', refund.id, {
         data: {
-          status: newStatus,
+          refundStatus: newStatus,
           metadata: {
             ...(refund.metadata as any || {}),
             stripeRefundId: refundObject.id,
@@ -565,7 +573,6 @@ export default {
         }
       });
       
-      console.log(`✅ Refund ${refund.refundId} updated to status: ${newStatus}`);
     } catch (error) {
       console.error('❌ Error handling refund updated:', error);
     }
@@ -576,8 +583,6 @@ export default {
    */
   async handleChargeDisputeCreated(dispute: any) {
     try {
-      console.log('⚖️ Charge Dispute Created:', dispute.id);
-      
       const payments = await strapi.entityService.findMany('api::payment.payment', {
         filters: {
           paymentIntentId: dispute.payment_intent
@@ -608,8 +613,6 @@ export default {
         }
       });
       
-      console.log(`⚠️ Dispute created for payment ${payment.id} - Amount: ${dispute.amount / 100}`);
-      console.log('✅ Dispute processed successfully');
     } catch (error) {
       console.error('❌ Error handling charge dispute created:', error);
     }

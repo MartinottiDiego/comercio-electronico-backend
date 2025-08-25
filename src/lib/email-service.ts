@@ -71,11 +71,10 @@ export class EmailService {
       };
 
       const info = await this.transporter.sendMail(emailData);
-      console.log(`📧 Email enviado a ${notification.recipientEmail}:`, info.messageId);
       return true;
     } catch (error) {
-      console.error('❌ Error enviando email:', error);
-      return false;
+      console.error('Error sending email:', error);
+      throw error;
     }
   }
 
@@ -362,10 +361,9 @@ Sistema de notificaciones automáticas
   async verifyConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();
-      console.log('✅ Conexión de email verificada');
       return true;
     } catch (error) {
-      console.error('❌ Error verificando conexión de email:', error);
+      console.error('Error verifying email connection:', error);
       return false;
     }
   }
