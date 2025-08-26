@@ -65,5 +65,16 @@ export default {
         middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
+    // Ruta de prueba para email (solo desarrollo)
+    {
+      method: 'POST',
+      path: '/refunds/test-email',
+      handler: 'refund.testEmail',
+      config: {
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
+        policies: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
+      },
+    },
   ],
 };

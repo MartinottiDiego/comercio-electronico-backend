@@ -196,5 +196,58 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
       console.error('Error processing refund:', error);
       ctx.throw(400, error.message || 'Error al procesar reembolso');
     }
+  },
+
+  /**
+   * Probar envío de email (solo para desarrollo)
+   */
+  async testEmail(ctx: Context) {
+    try {
+      const { user } = ctx.state;
+      
+      if (!user) {
+        return ctx.unauthorized('Usuario no autenticado');
+      }
+
+      // Solo permitir en desarrollo
+      if (process.env.NODE_ENV === 'production') {
+        return ctx.forbidden('Esta función solo está disponible en desarrollo');
+      }
+
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+
+      // Verificar conexión
+      const connectionOk = await emailService.verifyConnection();
+      if (!connectionOk) {
+        return ctx.internalServerError('No se pudo conectar al servidor de email');
+      }
+
+      // Enviar email de prueba
+      const testResult = await emailService.sendEmail({
+        to: user.email,
+        subject: '🧪 Prueba de Email - Sistema de Reembolsos',
+        template: 'test',
+        data: {
+          message: 'Este es un email de prueba del sistema de reembolsos',
+          timestamp: new Date().toISOString(),
+          user: user.email
+        }
+      });
+
+      if (testResult) {
+        return ctx.send({
+          success: true,
+          message: 'Email de prueba enviado exitosamente',
+          sentTo: user.email,
+          connectionStatus: 'OK'
+        });
+      } else {
+        return ctx.internalServerError('Error al enviar email de prueba');
+      }
+    } catch (error) {
+      console.error('Error testing email:', error);
+      return ctx.internalServerError('Error al probar email: ' + error.message);
+    }
   }
 })); 

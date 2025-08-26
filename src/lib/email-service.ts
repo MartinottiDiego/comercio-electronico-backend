@@ -39,7 +39,7 @@ export class EmailService {
       });
     } else {
       // Usar SMTP tradicional (Gmail configurado)
-      this.transporter = require('nodemailer').createTransport({
+      const smtpConfig = {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT || '587'),
         secure: false, // true for port 465, false for other ports
@@ -48,9 +48,16 @@ export class EmailService {
           pass: process.env.SMTP_PASS, // App password configurado
         },
         tls: {
-          rejectUnauthorized: false
-        }
-      });
+          rejectUnauthorized: false,
+          ciphers: 'SSLv3'
+        },
+        debug: process.env.NODE_ENV === 'development', // Habilitar debug en desarrollo
+        logger: process.env.NODE_ENV === 'development' // Habilitar logs en desarrollo
+      };
+
+      
+
+      this.transporter = require('nodemailer').createTransport(smtpConfig);
     }
   }
 
@@ -70,10 +77,34 @@ export class EmailService {
         text: this.generateNotificationText(notification),
       };
 
-      const info = await this.transporter.sendMail(emailData);
+      // Añadir información del remitente
+      const fromEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@waazaar.com';
+      
+      
+
+      const info = await this.transporter.sendMail({
+        ...emailData,
+        from: `"WaaZaar" <${fromEmail}>`,
+        replyTo: fromEmail
+      });
+
+      
+
       return true;
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('❌ Error enviando email:', {
+        error: error.message,
+        code: error.code,
+        command: error.command,
+        to: notification.recipientEmail,
+        subject: notification.title
+      });
+      
+      // Log detallado del error
+      if (error.response) {
+        console.error('📧 Respuesta del servidor SMTP:', error.response);
+      }
+      
       throw error;
     }
   }
@@ -95,8 +126,8 @@ export class EmailService {
             .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: white; }
             .header { background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center; }
             .content { background: #ffffff; padding: 30px 20px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .button { display: inline-block; padding: 15px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; transition: background 0.3s; }
-            .button:hover { background: #218838; }
+                         .button { display: inline-block; padding: 15px 30px; background: #28a745; color: white !important; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; border: 2px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+             .button:hover { background: #218838; border-color: #218838; }
             .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
             .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; color: #856404; }
           </style>
@@ -113,17 +144,17 @@ export class EmailService {
                 <strong>⚠️ Importante:</strong> Este enlace expirará en 24 horas por tu seguridad.
               </div>
               
-              ${notification.actionUrl ? `
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}${notification.actionUrl}" class="button">
-                    🔑 ${notification.actionText || 'Restablecer Contraseña'}
-                  </a>
-                </div>
-                <p style="font-size: 14px; color: #666; word-break: break-all;">
-                  O copia y pega este enlace: <br>
-                  <strong>${process.env.FRONTEND_URL || 'http://localhost:3000'}${notification.actionUrl}</strong>
-                </p>
-              ` : ''}
+                                            ${notification.actionUrl ? `
+                 <div style="text-align: center; margin: 30px 0;">
+                   <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}${notification.actionUrl}" class="button">
+                     🔑 ${notification.actionText || 'Restablecer Contraseña'}
+                   </a>
+                 </div>
+                 <p style="text-align: center; margin: 30px 0;">
+                   O copia y pega este enlace: <br>
+                   <strong>${process.env.FRONTEND_URL || 'http://localhost:3001'}${notification.actionUrl}</strong>
+                 </p>
+               ` : ''}
               
               <p style="font-size: 14px; color: #666; margin-top: 30px;">
                 Si no solicitaste este cambio, puedes ignorar este email. Tu contraseña no será modificada.
@@ -151,7 +182,7 @@ export class EmailService {
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background: ${statusColor}; color: white; padding: 20px; border-radius: 5px 5px 0 0; }
           .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 5px 5px; }
-          .button { display: inline-block; padding: 10px 20px; background: ${statusColor}; color: white; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+                     .button { display: inline-block; padding: 12px 24px; background: #007bff; color: white !important; text-decoration: none; border-radius: 6px; margin-top: 15px; font-weight: bold; font-size: 16px; border: 2px solid #007bff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
           .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
         </style>
       </head>
@@ -162,7 +193,7 @@ export class EmailService {
           </div>
           <div class="content">
             <p>${notification.message}</p>
-            ${notification.actionUrl ? `<a href="${process.env.FRONTEND_URL}${notification.actionUrl}" class="button">${notification.actionText || 'Ver más'}</a>` : ''}
+            ${notification.actionUrl ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}${notification.actionUrl}" class="button">${notification.actionText || 'Ver más'}</a>` : ''}
           </div>
           <div class="footer">
             <p>Este es un email automático del sistema de notificaciones.</p>
@@ -180,7 +211,7 @@ ${notification.title}
 
 ${notification.message}
 
-${notification.actionUrl ? `Acción: ${process.env.FRONTEND_URL}${notification.actionUrl}` : ''}
+${notification.actionUrl ? `Acción: ${process.env.FRONTEND_URL || 'http://localhost:3001'}${notification.actionUrl}` : ''}
 
 ---
 Fecha: ${new Date().toLocaleString()}
@@ -235,13 +266,61 @@ Sistema de notificaciones automáticas
   }
 
   /**
-   * Enviar email para solicitud de reembolso creada (para tienda)
+   * Enviar email de confirmación al usuario que solicitó el reembolso
    */
-  async sendRefundRequestEmail(refund: any, order: any, customer: any, storeEmail: string): Promise<boolean> {
+  async sendRefundRequestConfirmationToUser(refund: any, order: any, customer: any): Promise<boolean> {
+    // Obtener nombre del usuario de diferentes fuentes posibles
+    let customerName = 'Cliente';
+    if (customer?.profile?.firstName && customer?.profile?.lastName) {
+      customerName = `${customer.profile.firstName} ${customer.profile.lastName}`;
+    } else if (customer?.firstName && customer?.lastName) {
+      customerName = `${customer.firstName} ${customer.lastName}`;
+    } else if (customer?.username) {
+      customerName = customer.username;
+    } else if (customer?.email) {
+      customerName = customer.email.split('@')[0]; // Usar parte del email como nombre
+    }
+    
+    // Obtener información del producto
+    const productName = order?.order_items?.[0]?.product?.title || 'Producto';
+    const storeName = order?.order_items?.[0]?.product?.store?.name || 'Tienda';
+    
+    const notification = {
+      recipientEmail: customer.email,
+      title: `🔄 Solicitud de Reembolso Confirmada - Pedido #${order.orderNumber}`,
+      message: `Hola ${customerName}, hemos recibido tu solicitud de reembolso de €${refund.amount} para el producto "${productName}" de ${storeName}. Tu solicitud está siendo revisada por la tienda y pronto recibirás una notificación sobre el estado. Motivo: ${this.getReasonLabel(refund.reason)}.`,
+      actionUrl: `/historial-compras`,
+      actionText: 'Ver Historial',
+      priority: 'normal'
+    };
+    
+    return this.sendNotificationEmail(notification);
+  }
+
+  /**
+   * Enviar email de notificación a la tienda sobre nueva solicitud de reembolso
+   */
+  async sendRefundRequestNotificationToStore(refund: any, order: any, customer: any, storeEmail: string): Promise<boolean> {
+    // Obtener nombre del usuario de diferentes fuentes posibles
+    let customerName = 'Cliente';
+    if (customer?.profile?.firstName && customer?.profile?.lastName) {
+      customerName = `${customer.profile.firstName} ${customer.profile.lastName}`;
+    } else if (customer?.firstName && customer?.lastName) {
+      customerName = `${customer.firstName} ${customer.lastName}`;
+    } else if (customer?.username) {
+      customerName = customer.username;
+    } else if (customer?.email) {
+      customerName = customer.email.split('@')[0]; // Usar parte del email como nombre
+    }
+    
+    // Obtener información del producto
+    const productName = order?.order_items?.[0]?.product?.title || 'Producto';
+    const storeName = order?.order_items?.[0]?.product?.store?.name || 'Tienda';
+    
     const notification = {
       recipientEmail: storeEmail,
       title: `🔄 Nueva Solicitud de Reembolso - Pedido #${order.orderNumber}`,
-      message: `${customer.firstName} ${customer.lastName} ha solicitado un reembolso de €${refund.amount} para el pedido #${order.orderNumber}. Motivo: ${this.getReasonLabel(refund.reason)}. Revisa la solicitud en tu dashboard.`,
+      message: `Hola ${storeName}, el usuario ${customerName} (${customer.email}) ha solicitado un reembolso de €${refund.amount} para el producto "${productName}" del pedido #${order.orderNumber}. Motivo: ${this.getReasonLabel(refund.reason)}. Revisa la solicitud en tu dashboard.`,
       actionUrl: `/dashboard/reembolsos`,
       actionText: 'Revisar Solicitud',
       priority: 'high'
@@ -313,7 +392,28 @@ Sistema de notificaciones automáticas
       
       switch (template) {
         case 'refund-request-created':
-          return this.sendRefundRequestEmail(data.refund, data.order, data.customer, to);
+          // Para solicitudes de reembolso, enviar tanto al usuario como a la tienda
+          await this.sendRefundRequestConfirmationToUser(data.refund, data.order, data.customer);
+          
+          // Obtener el email del owner de la tienda
+          const store = data.order?.order_items?.[0]?.product?.store;
+          
+          if (!store || !store.owner) {
+            console.error('❌ No se pudo obtener la tienda o su owner');
+            return false;
+          }
+          
+          // Obtener el email del owner de la tienda
+          const storeOwner = await strapi.entityService.findOne('plugin::users-permissions.user', store.owner.id, {
+            fields: ['email']
+          });
+          
+          if (!storeOwner || !storeOwner.email) {
+            console.error('❌ No se pudo obtener el email del owner de la tienda');
+            return false;
+          }
+          
+          return this.sendRefundRequestNotificationToStore(data.refund, data.order, data.customer, storeOwner.email);
         
         case 'refund-status-updated':
           return this.sendRefundStatusUpdateEmail(data.refund, data.order, data.customer);

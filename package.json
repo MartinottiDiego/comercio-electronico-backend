@@ -21,7 +21,9 @@
     "docker:rebuild": "docker-compose down && docker-compose build --no-cache && docker-compose up -d",
     "docker:clean": "docker-compose down -v && docker system prune -f",
     "docker:dev": "docker-compose up",
-    "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
+    "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d",
+    "test:email": "node scripts/test-email.js",
+    "debug:gmail": "node scripts/debug-gmail.js"
   },
   "dependencies": {
     "@strapi/plugin-cloud": "5.17.0",

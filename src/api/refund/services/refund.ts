@@ -43,7 +43,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       }
 
       // 4. Crear el reembolso
-      const refund = await strapi.entityService.create('api::refund.refund', {
+      const refund = await strapi.entityService.findOne('api::refund.refund', (await strapi.entityService.create('api::refund.refund', {
         data: {
           order: orderId,
           user: userId,
@@ -55,7 +55,34 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           currency: 'EUR',
           refundId: `REF-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
         }
+      })).id, {
+        populate: {
+          order: { 
+            populate: { 
+              user: true, 
+              order_items: { 
+                populate: { 
+                  product: { 
+                    populate: { 
+                      store: true 
+                    } 
+                  } 
+                } 
+              } 
+            } 
+          },
+          user: true
+        }
       });
+
+      // 5. Enviar notificación por email
+      try {
+        await this.sendRefundNotification(refund, 'request_created');
+        console.log('📧 Email de solicitud de reembolso enviado exitosamente');
+      } catch (emailError) {
+        console.error('⚠️ Error enviando email de reembolso:', emailError);
+        // No fallar si el email falla, solo logear el error
+      }
 
       return refund;
     } catch (error) {
@@ -461,15 +488,52 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       
       switch (type) {
         case 'request_created':
-          // Notificar a la tienda
-          const storeEmail = refund.order?.order_items?.[0]?.product?.store?.email || 
-                            process.env.SMTP_USER; // Fallback al email configurado
+          // Obtener datos completos del usuario
+          const userWithProfile = await strapi.entityService.findOne('plugin::users-permissions.user', refund.user.id, {
+            populate: ['profile']
+          });
           
-          await emailService.sendRefundRequestEmail(
+          // 1. Enviar email de confirmación al usuario que solicitó el reembolso
+          await emailService.sendRefundRequestConfirmationToUser(
             refund,
             refund.order,
-            refund.user,
-            storeEmail
+            userWithProfile
+          );
+          
+          // 2. Enviar email de notificación a la tienda
+          // Obtener el email del owner de la tienda
+          const store = refund.order?.order_items?.[0]?.product?.store;
+          
+          if (!store) {
+            console.error('❌ No se pudo obtener la tienda del producto');
+            return;
+          }
+          
+          // Hacer una consulta separada para obtener la tienda con su owner
+          const storeWithOwner = await strapi.entityService.findOne('api::store.store', store.id, {
+            populate: ['owner']
+          }) as any;
+          
+          if (!storeWithOwner?.owner) {
+            console.error('❌ La tienda no tiene owner asignado');
+            return;
+          }
+          
+          // Obtener el email del owner de la tienda
+          const storeOwner = await strapi.entityService.findOne('plugin::users-permissions.user', storeWithOwner.owner.id, {
+            fields: ['email']
+          });
+          
+          if (!storeOwner || !storeOwner.email) {
+            console.error('❌ No se pudo obtener el email del owner de la tienda');
+            return;
+          }
+          
+          await emailService.sendRefundRequestNotificationToStore(
+            refund,
+            refund.order,
+            userWithProfile,
+            storeOwner.email
           );
           break;
           
