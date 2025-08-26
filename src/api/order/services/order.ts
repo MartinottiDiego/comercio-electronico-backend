@@ -33,16 +33,13 @@ export default factories.createCoreService('api::order.order', ({ strapi }) => (
         ...(addresses?.billing && { billing_address: addresses.billing })
       };
 
-      console.log('🔵 [Order Service] Creating order with data:', JSON.stringify(orderData, null, 2));
-
       const order = await strapi.entityService.create('api::order.order', {
         data: orderData
       });
 
-      console.log('✅ [Order Service] Order created successfully:', order.id);
       return order;
     } catch (error) {
-      console.error('❌ [Order Service] Error creating order:', error);
+      console.error('Error creating order:', error);
       throw error;
     }
   },
@@ -50,39 +47,30 @@ export default factories.createCoreService('api::order.order', ({ strapi }) => (
   /**
    * Actualizar el estado de una orden
    */
-  async updateOrderStatus(orderId: number, orderStatus: string, paymentStatus?: string) {
+  async updateOrderStatus(orderId: string | number, orderStatus: string) {
     try {
-      const updateData: any = { orderStatus };
-      
-      if (paymentStatus) {
-        updateData.paymentStatus = paymentStatus;
-      }
-
       const order = await strapi.entityService.update('api::order.order', orderId, {
-        data: updateData
+        data: { orderStatus: orderStatus as any }
       });
 
-      console.log(`✅ [Order Service] Order ${orderId} status updated to: ${orderStatus}`);
       return order;
     } catch (error) {
-      console.error(`❌ [Order Service] Error updating order status:`, error);
+      console.error('Error updating order status:', error);
       throw error;
     }
   },
 
-  async confirmPayment(orderId, paymentData) {
+  async confirmPayment(orderId: string | number) {
     try {
       const order = await strapi.entityService.update('api::order.order', orderId, {
-        data: { 
+        data: {
           paymentStatus: 'paid'
         }
       });
-      
-      console.log(`💳 Pago confirmado para orden: ${orderId}`);
-      
+
       return order;
     } catch (error) {
-      console.error('❌ Error confirmando pago:', error);
+      console.error('Error confirming payment:', error);
       throw error;
     }
   },

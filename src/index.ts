@@ -15,16 +15,16 @@ export default {
    * run jobs, or perform some special logic.
    */
   bootstrap({ strapi }) {
-    // Cron job para limpiar reservas expiradas cada 5 minutos
-    setInterval(async () => {
-      try {
-        await strapi.service('api::product.product').cleanupExpiredReservations();
-      } catch (error) {
-        console.error('Error in cleanup cron job:', error);
-      }
-    }, 5 * 60 * 1000); // 5 minutos
+    // Inicializar cron jobs para limpieza automática
+    // cron.schedule('0 2 * * *', async () => {
+    //   try {
+    //     await cleanupExpiredStockReservations();
+    //   } catch (error) {
+    //     console.error('Error en cron job de limpieza:', error);
+    //   }
+    // });
 
-    console.log('🕐 Stock reservation cleanup cron job started');
-    console.log('🔔 Sistema de notificaciones inicializado (simplificado)');
+    // Inicializar sistema de notificaciones
+    // initializeNotificationSystem();
   },
 };

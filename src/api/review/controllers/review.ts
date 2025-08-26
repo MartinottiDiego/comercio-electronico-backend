@@ -33,7 +33,6 @@ export default factories.createCoreController('api::review.review', ({ strapi })
             }
           });
           
-          console.log(`✅ Producto ${productId} actualizado: rating=${averageRating}, count=${reviews.length}`);
         } catch (error) {
           console.error('⚠️ Error actualizando estadísticas del producto:', error);
         }
