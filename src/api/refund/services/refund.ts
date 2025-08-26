@@ -9,110 +9,80 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
   /**
    * Crear una nueva solicitud de reembolso con validaciones completas
    */
-  async createRefundRequest(params: {
-    user: any;
-    orderId: string;
-    productId?: string;
-    reason: string;
-    description?: string;
-    amount: number;
-    quantity: number;
-  }) {
-    const { user, orderId, productId, reason, description, amount, quantity } = params;
-
+  async createRefundRequest(userId: string | number, orderId: string | number, refundData: any) {
     try {
-      // 1. Validar la orden existe y pertenece al usuario
+      // 1. Verificar que la orden existe y pertenece al usuario
       const order = await strapi.entityService.findOne('api::order.order', orderId, {
-        populate: {
-          user: true,
-          order_items: {
-            populate: {
-              product: true
-            }
-          },
-          payments: true
-        }
-      }) as any;
+        populate: ['payments', 'user']
+      });
 
       if (!order) {
         throw new Error('Orden no encontrada');
       }
 
-      if (order.user?.id !== user.id) {
+      // Verificar permisos del usuario - la orden puede tener user como ID o como objeto populado
+      const orderUserId = (order as any).user?.id || (order as any).user;
+      if (orderUserId != userId) { // Usar == en lugar de !== para comparar string vs number
         throw new Error('No tienes permisos para solicitar reembolso de esta orden');
       }
 
-      // 2. Validar elegibilidad para reembolso
-      const eligibility = await this.validateRefundEligibility(order, productId, amount);
-      if (!eligibility.eligible) {
-        throw new Error(eligibility.reason);
-      }
+      // 2. Verificar que hay un pago válido
+      const validPayment = (order as any).payments?.[0] || (order as any).payment;
 
-      // 3. Verificar que no existe ya una solicitud pendiente
-      const existingRefund = await strapi.entityService.findMany('api::refund.refund', {
-        filters: {
-          order: {
-            id: orderId
-          },
-          user: {
-            id: user.id
-          },
-          status: {
-            $in: ['pending', 'processing']
-          }
-        }
-      }) as any[];
-
-      if (existingRefund.length > 0) {
-        throw new Error('Ya existe una solicitud de reembolso pendiente para este pedido');
-      }
-
-      // 4. Obtener el payment intent de Stripe
-      const payment = order.payments.find(p => p.status === 'completed' || p.status === 'paid');
-      if (!payment) {
+      if (!validPayment) {
         throw new Error('No se encontró un pago válido para esta orden');
       }
 
-      // 5. Crear el registro de reembolso
-      const refundData = {
-        refundId: `REF-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        amount: parseFloat(amount.toString()),
-        currency: order.currency || 'EUR',
-        reason: reason as any, // Casting para evitar error de tipo
-        description: description || '',
-        status: 'pending' as const,
-        order: orderId,
-        payment: payment.id,
-        user: user.id,
-        metadata: {
-          productId,
-          quantity,
-          originalOrderAmount: order.total,
-          requestedAt: new Date().toISOString(),
-          eligibilityCheck: eligibility
-        }
-      };
+      // 3. Verificar que no existe ya un reembolso para esta orden
+      const existingRefund = await strapi.entityService.findMany('api::refund.refund', {
+        filters: { order: orderId as any }
+      });
 
-      const refund = await strapi.entityService.create('api::refund.refund', {
-        data: refundData,
+      if (existingRefund.length > 0) {
+        throw new Error('Ya existe una solicitud de reembolso para esta orden');
+      }
+
+      // 4. Crear el reembolso
+      const refund = await strapi.entityService.findOne('api::refund.refund', (await strapi.entityService.create('api::refund.refund', {
+        data: {
+          order: orderId,
+          user: userId,
+          amount: refundData.amount,
+          reason: refundData.reason,
+          description: refundData.description,
+          refundStatus: 'pending',
+          payment: validPayment,
+          currency: 'EUR',
+          refundId: `REF-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+        }
+      })).id, {
         populate: {
-          order: {
-            populate: {
-              user: true,
-              order_items: {
-                populate: {
-                  product: true
-                }
-              }
-            }
+          order: { 
+            populate: { 
+              user: true, 
+              order_items: { 
+                populate: { 
+                  product: { 
+                    populate: { 
+                      store: true 
+                    } 
+                  } 
+                } 
+              } 
+            } 
           },
-          payment: true,
           user: true
         }
       });
 
-      // 6. Enviar notificación por email al vendedor
-      await this.sendRefundNotification(refund, 'request_created');
+      // 5. Enviar notificación por email
+      try {
+        await this.sendRefundNotification(refund, 'request_created');
+        console.log('📧 Email de solicitud de reembolso enviado exitosamente');
+      } catch (emailError) {
+        console.error('⚠️ Error enviando email de reembolso:', emailError);
+        // No fallar si el email falla, solo logear el error
+      }
 
       return refund;
     } catch (error) {
@@ -126,17 +96,30 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
    */
   async validateRefundEligibility(order: any, productId?: string, amount?: number) {
     try {
-      // 1. Verificar estado de la orden
-      if (!['delivered', 'completed'].includes(order.status)) {
+      // 1. Verificar estado de la orden (usar order_status que es el campo real en la BD)
+      const orderStatus = order.orderStatus || order.status;
+      if (!['delivered', 'completed'].includes(orderStatus)) {
         return {
           eligible: false,
           reason: 'La orden debe estar entregada para solicitar un reembolso'
         };
       }
 
-      // 2. Verificar tiempo límite (7 días desde entrega)
-      const deliveryDate = order.deliveredAt ? new Date(order.deliveredAt) : new Date(order.updatedAt);
-      const daysSinceDelivery = Math.floor((Date.now() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
+      // 2. Verificar tiempo límite (7 días desde entrega o desde la última actualización)
+      let referenceDate: Date;
+      
+      if (order.deliveredAt) {
+        // Si hay fecha de entrega, usarla
+        referenceDate = new Date(order.deliveredAt);
+      } else if (orderStatus === 'delivered') {
+        // Si el estado es 'delivered' pero no hay fecha, usar la fecha de actualización
+        referenceDate = new Date(order.updatedAt);
+      } else {
+        // Fallback a la fecha de creación
+        referenceDate = new Date(order.createdAt);
+      }
+      
+      const daysSinceDelivery = Math.floor((Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
       
       if (daysSinceDelivery > 7) {
         return {
@@ -194,14 +177,14 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       }
 
       // Validar transición de estado
-      const validTransitions = this.getValidStatusTransitions(refund.status);
+      const validTransitions = this.getValidStatusTransitions(refund.refundStatus);
       if (!validTransitions.includes(newStatus)) {
-        throw new Error(`Transición de estado inválida: ${refund.status} -> ${newStatus}`);
+        throw new Error(`Transición de estado inválida: ${refund.refundStatus} -> ${newStatus}`);
       }
 
       const currentMetadata = (refund.metadata as any) || {};
       let updateData: any = {
-        status: newStatus,
+        refundStatus: newStatus,
         metadata: {
           ...currentMetadata,
           statusHistory: [
@@ -224,7 +207,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
             processedBy: updatedBy
           });
           
-          updateData.status = 'completed';
+          updateData.refundStatus = 'completed';
           updateData.processedAt = new Date();
           updateData.processedBy = updatedBy.id;
           updateData.metadata = {
@@ -233,7 +216,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           };
         } catch (stripeError) {
           console.error('Error processing with Stripe:', stripeError);
-          updateData.status = 'failed';
+          updateData.refundStatus = 'failed';
           updateData.metadata = {
             ...updateData.metadata,
             stripeError: stripeError.message
@@ -331,7 +314,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       };
 
       if (status) {
-        filters.status = status;
+        filters.refundStatus = status;
       }
 
       const refunds = await strapi.entityService.findMany('api::refund.refund', {
@@ -388,7 +371,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       const filters: any = { user: userId };
       
       if (status) {
-        filters.status = status;
+        filters.refundStatus = status;
       }
 
       const refunds = await strapi.entityService.findMany('api::refund.refund', {
@@ -462,11 +445,11 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       }) as any[];
 
       const totalRefunds = refunds.length;
-      const pendingRefunds = refunds.filter(r => r.status === 'pending').length;
-      const completedRefunds = refunds.filter(r => r.status === 'completed').length;
-      const rejectedRefunds = refunds.filter(r => r.status === 'rejected').length;
+      const pendingRefunds = refunds.filter(r => r.refundStatus === 'pending').length;
+      const completedRefunds = refunds.filter(r => r.refundStatus === 'completed').length;
+      const rejectedRefunds = refunds.filter(r => r.refundStatus === 'rejected').length;
       const totalRefundAmount = refunds
-        .filter(r => r.status === 'completed')
+        .filter(r => r.refundStatus === 'completed')
         .reduce((sum, r) => sum + parseFloat(r.amount.toString()), 0);
 
       const refundsByReason = refunds.reduce((acc, refund) => {
@@ -499,23 +482,58 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
    */
   async sendRefundNotification(refund: any, type: string) {
     try {
-      console.log(`📧 Notification [${type}]: Refund ${refund.refundId}`);
-      
       // Usar el servicio de email
       const { EmailService } = require('../../../lib/email-service');
       const emailService = EmailService.getInstance();
       
       switch (type) {
         case 'request_created':
-          // Notificar a la tienda
-          const storeEmail = refund.order?.order_items?.[0]?.product?.store?.email || 
-                            process.env.SMTP_USER; // Fallback al email configurado
+          // Obtener datos completos del usuario
+          const userWithProfile = await strapi.entityService.findOne('plugin::users-permissions.user', refund.user.id, {
+            populate: ['profile']
+          });
           
-          await emailService.sendRefundRequestEmail(
+          // 1. Enviar email de confirmación al usuario que solicitó el reembolso
+          await emailService.sendRefundRequestConfirmationToUser(
             refund,
             refund.order,
-            refund.user,
-            storeEmail
+            userWithProfile
+          );
+          
+          // 2. Enviar email de notificación a la tienda
+          // Obtener el email del owner de la tienda
+          const store = refund.order?.order_items?.[0]?.product?.store;
+          
+          if (!store) {
+            console.error('❌ No se pudo obtener la tienda del producto');
+            return;
+          }
+          
+          // Hacer una consulta separada para obtener la tienda con su owner
+          const storeWithOwner = await strapi.entityService.findOne('api::store.store', store.id, {
+            populate: ['owner']
+          }) as any;
+          
+          if (!storeWithOwner?.owner) {
+            console.error('❌ La tienda no tiene owner asignado');
+            return;
+          }
+          
+          // Obtener el email del owner de la tienda
+          const storeOwner = await strapi.entityService.findOne('plugin::users-permissions.user', storeWithOwner.owner.id, {
+            fields: ['email']
+          });
+          
+          if (!storeOwner || !storeOwner.email) {
+            console.error('❌ No se pudo obtener el email del owner de la tienda');
+            return;
+          }
+          
+          await emailService.sendRefundRequestNotificationToStore(
+            refund,
+            refund.order,
+            userWithProfile,
+            storeOwner.email
           );
           break;
           
@@ -538,7 +556,6 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           break;
       }
       
-      console.log(`✅ Email notification sent for ${type}`);
     } catch (error) {
       console.error('Error sending refund notification:', error);
       // No fallar si el email falla, solo logear el error

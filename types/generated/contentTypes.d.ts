@@ -903,6 +903,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 1000;
       }>;
+    deliveredAt: Schema.Attribute.DateTime;
     discount: Schema.Attribute.Decimal &
       Schema.Attribute.SetMinMax<
         {
@@ -1493,7 +1494,7 @@ export interface ApiRefundRefund extends Struct.CollectionTypeSchema {
     refundId: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
-    status: Schema.Attribute.Enumeration<
+    refundStatus: Schema.Attribute.Enumeration<
       ['pending', 'processing', 'completed', 'failed', 'cancelled', 'rejected']
     > &
       Schema.Attribute.Required &

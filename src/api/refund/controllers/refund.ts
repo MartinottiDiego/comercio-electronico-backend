@@ -9,40 +9,33 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
   /**
    * Crear una nueva solicitud de reembolso
    */
-  async createRefundRequest(ctx: Context) {
+  async createRefundRequest(ctx) {
     try {
-      const user = ctx.state.user;
+      const { user } = ctx.state;
+      
       if (!user) {
-        return ctx.unauthorized('Debes estar autenticado');
+        return ctx.unauthorized('Usuario no autenticado');
       }
 
-      const { orderId, productId, reason, description, amount, quantity = 1 } = ctx.request.body as any;
+      const { orderId, productId, reason, description, amount, quantity } = ctx.request.body;
 
-      // Validar datos requeridos
       if (!orderId || !reason || !amount) {
-        return ctx.badRequest('Campos requeridos: orderId, reason, amount');
+        return ctx.badRequest('orderId, reason y amount son requeridos');
       }
 
-      // Usar el servicio de reembolsos para validar y crear
-      const refundService = strapi.service('api::refund.refund');
-      const result = await refundService.createRefundRequest({
-        user,
+      const result = await strapi.service('api::refund.refund').createRefundRequest(
+        user.id,
         orderId,
-        productId,
-        reason,
-        description,
-        amount,
-        quantity
-      });
+        { reason, description, amount, productId, quantity }
+      );
 
-      ctx.body = {
+      return ctx.send({
         success: true,
-        data: result,
-        message: 'Solicitud de reembolso creada exitosamente'
-      };
+        data: result
+      });
     } catch (error) {
       console.error('Error creating refund request:', error);
-      ctx.throw(400, error.message || 'Error al crear solicitud de reembolso');
+      return ctx.internalServerError('Error creando solicitud de reembolso');
     }
   },
 
@@ -202,6 +195,59 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
     } catch (error) {
       console.error('Error processing refund:', error);
       ctx.throw(400, error.message || 'Error al procesar reembolso');
+    }
+  },
+
+  /**
+   * Probar envío de email (solo para desarrollo)
+   */
+  async testEmail(ctx: Context) {
+    try {
+      const { user } = ctx.state;
+      
+      if (!user) {
+        return ctx.unauthorized('Usuario no autenticado');
+      }
+
+      // Solo permitir en desarrollo
+      if (process.env.NODE_ENV === 'production') {
+        return ctx.forbidden('Esta función solo está disponible en desarrollo');
+      }
+
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+
+      // Verificar conexión
+      const connectionOk = await emailService.verifyConnection();
+      if (!connectionOk) {
+        return ctx.internalServerError('No se pudo conectar al servidor de email');
+      }
+
+      // Enviar email de prueba
+      const testResult = await emailService.sendEmail({
+        to: user.email,
+        subject: '🧪 Prueba de Email - Sistema de Reembolsos',
+        template: 'test',
+        data: {
+          message: 'Este es un email de prueba del sistema de reembolsos',
+          timestamp: new Date().toISOString(),
+          user: user.email
+        }
+      });
+
+      if (testResult) {
+        return ctx.send({
+          success: true,
+          message: 'Email de prueba enviado exitosamente',
+          sentTo: user.email,
+          connectionStatus: 'OK'
+        });
+      } else {
+        return ctx.internalServerError('Error al enviar email de prueba');
+      }
+    } catch (error) {
+      console.error('Error testing email:', error);
+      return ctx.internalServerError('Error al probar email: ' + error.message);
     }
   }
 })); 

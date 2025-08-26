@@ -2,8 +2,6 @@
  * refund router
  */
 
-import { factories } from '@strapi/strapi';
-
 export default {
   routes: [
     // Rutas públicas para autenticados
@@ -12,11 +10,9 @@ export default {
       path: '/refunds/request',
       handler: 'refund.createRefundRequest',
       config: {
-        auth: {
-          scope: ['authenticated']
-        },
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
         policies: [],
-        middlewares: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
     {
@@ -24,11 +20,9 @@ export default {
       path: '/refunds/user',
       handler: 'refund.getUserRefunds',
       config: {
-        auth: {
-          scope: ['authenticated']
-        },
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
         policies: [],
-        middlewares: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
     {
@@ -36,11 +30,9 @@ export default {
       path: '/refunds/store/:storeId?',
       handler: 'refund.getStoreRefunds',
       config: {
-        auth: {
-          scope: ['authenticated']
-        },
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
         policies: [],
-        middlewares: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
     {
@@ -48,11 +40,9 @@ export default {
       path: '/refunds/:id/status',
       handler: 'refund.updateRefundStatus',
       config: {
-        auth: {
-          scope: ['authenticated']
-        },
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
         policies: [],
-        middlewares: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
     {
@@ -60,11 +50,9 @@ export default {
       path: '/refunds/:id/process',
       handler: 'refund.processRefund',
       config: {
-        auth: {
-          scope: ['authenticated']
-        },
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
         policies: [],
-        middlewares: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
     {
@@ -72,12 +60,21 @@ export default {
       path: '/refunds/analytics',
       handler: 'refund.getRefundAnalytics',
       config: {
-        auth: {
-          scope: ['authenticated']
-        },
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
         policies: [],
-        middlewares: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
+      },
+    },
+    // Ruta de prueba para email (solo desarrollo)
+    {
+      method: 'POST',
+      path: '/refunds/test-email',
+      handler: 'refund.testEmail',
+      config: {
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
+        policies: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
   ],
-}; 
+};

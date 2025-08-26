@@ -75,7 +75,7 @@ export default factories.createCoreService('api::notification.notification', ({ 
       });
 
       if (!user) {
-        console.log(`⚠️ Usuario no encontrado para push notification: ${notification.recipientEmail}`);
+        // Usuario no encontrado, retornar false
         return false;
       }
 

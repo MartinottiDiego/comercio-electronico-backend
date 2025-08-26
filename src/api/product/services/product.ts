@@ -89,72 +89,58 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
     }
   },
 
-  // Método para liberar stock reservado
-  async releaseStock(reservationId: string) {
+  async releaseStockReservation(reservationId: string): Promise<void> {
     try {
-      // En una implementación real, aquí liberarías la reserva
-      console.log(`Liberando stock para reserva: ${reservationId}`);
-      return {
-        success: true,
-        message: 'Stock liberado'
-      };
+      const reservation = await strapi.entityService.findOne('api::stock-reservation.stock-reservation', reservationId);
+      
+      if (reservation) {
+        // Liberar el stock reservado
+        await strapi.entityService.update('api::product.product', (reservation as any).product.id, {
+          data: {
+            stock: (reservation as any).product.stock + reservation.quantity
+          }
+        });
+
+        // Eliminar la reserva
+        await strapi.entityService.delete('api::stock-reservation.stock-reservation', reservationId);
+      }
     } catch (error) {
-      console.error('Error liberando stock:', error);
-      return {
-        success: false,
-        error: 'Error interno liberando stock'
-      };
+      console.error('Error releasing stock reservation:', error);
     }
   },
 
-  // Método para confirmar reserva de stock (usado cuando el pago es exitoso)
-  async confirmStockReservation(reservationId: string) {
+  async confirmStockReservation(reservationId: string): Promise<void> {
     try {
-      // En una implementación real, aquí confirmarías la reserva y reducirías el stock
-      console.log(`Confirmando reserva de stock: ${reservationId}`);
+      const reservation = await strapi.entityService.findOne('api::stock-reservation.stock-reservation', reservationId);
       
-      // Por ahora, simplemente logueamos que se confirmó
-      // En una implementación real, aquí:
-      // 1. Buscarías la reserva en la base de datos
-      // 2. Reducirías el stock del producto
-      // 3. Marcarías la reserva como confirmada
-      
-      return {
-        success: true,
-        message: 'Reserva de stock confirmada'
-      };
+      if (reservation) {
+        // Marcar la reserva como confirmada
+        await strapi.entityService.update('api::stock-reservation.stock-reservation', reservationId, {
+          data: {
+            status: 'pending' as any
+          }
+        });
+      }
     } catch (error) {
-      console.error('Error confirmando reserva de stock:', error);
-      return {
-        success: false,
-        error: 'Error interno confirmando reserva de stock'
-      };
+      console.error('Error confirming stock reservation:', error);
     }
   },
 
-  // Método para limpiar reservas expiradas (cron job)
-  async cleanupExpiredReservations() {
+  async cleanupExpiredReservations(): Promise<void> {
     try {
-      // Por ahora, simplemente logueamos que se ejecutó
-      // En una implementación real, aquí buscarías reservas expiradas y las liberarías
-      console.log('🧹 Ejecutando limpieza de reservas expiradas...');
-      
-      // Aquí podrías implementar la lógica real:
-      // 1. Buscar reservas expiradas en la base de datos
-      // 2. Liberar el stock de esas reservas
-      // 3. Eliminar las reservas expiradas
-      
-      return {
-        success: true,
-        message: 'Limpieza de reservas completada',
-        cleanedCount: 0 // Por ahora no limpiamos nada
-      };
+      const now = new Date();
+      const expiredReservations = await strapi.entityService.findMany('api::stock-reservation.stock-reservation', {
+        filters: {
+          expiresAt: { $lt: now },
+          status: 'pending' as any
+        }
+      });
+
+      for (const reservation of expiredReservations) {
+        await this.releaseStockReservation(reservation.id.toString());
+      }
     } catch (error) {
-      console.error('Error en limpieza de reservas:', error);
-      return {
-        success: false,
-        error: 'Error interno en limpieza de reservas'
-      };
+      console.error('Error cleaning up expired reservations:', error);
     }
   }
 }));
