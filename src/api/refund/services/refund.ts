@@ -75,13 +75,17 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       });
 
-      // 5. Enviar notificación por email
+      // 5. Enviar notificaciones por email y crear notificaciones en BD
       try {
         await this.sendRefundNotification(refund, 'request_created');
         console.log('📧 Email de solicitud de reembolso enviado exitosamente');
-      } catch (emailError) {
-        console.error('⚠️ Error enviando email de reembolso:', emailError);
-        // No fallar si el email falla, solo logear el error
+        
+        // Crear notificación en base de datos para el frontend
+        await this.createRefundNotifications(refund, 'request_created');
+        console.log('📱 Notificaciones de reembolso creadas en BD exitosamente');
+      } catch (notificationError) {
+        console.error('⚠️ Error enviando notificaciones de reembolso:', notificationError);
+        // No fallar si las notificaciones fallan, solo logear el error
       }
 
       return refund;
@@ -214,6 +218,9 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
             ...updateData.metadata,
             stripeRefundId: stripeResult.stripeRefundId
           };
+          
+          // Si se completó exitosamente, enviar notificación de completado
+          const finalStatus = 'completed';
         } catch (stripeError) {
           console.error('Error processing with Stripe:', stripeError);
           updateData.refundStatus = 'failed';
@@ -233,7 +240,23 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       });
 
+      // Enviar notificaciones por email y crear notificaciones en BD
       await this.sendRefundNotification(updatedRefund, 'status_updated');
+      
+      // Crear notificación en base de datos para el frontend
+      try {
+        // Si el reembolso se completó, enviar notificación especial
+        if (newStatus === 'completed') {
+          await this.createRefundNotifications(updatedRefund, 'completed');
+          console.log('📱 Notificación de reembolso completado creada en BD');
+        } else {
+          await this.createRefundNotifications(updatedRefund, 'status_updated');
+          console.log('📱 Notificación de actualización de estado creada en BD');
+        }
+      } catch (notificationError) {
+        console.error('⚠️ Error creando notificación de actualización:', notificationError);
+      }
+      
       return updatedRefund;
     } catch (error) {
       console.error('Error updating refund status:', error);
@@ -559,6 +582,85 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
     } catch (error) {
       console.error('Error sending refund notification:', error);
       // No fallar si el email falla, solo logear el error
+    }
+  },
+
+  /**
+   * Crear notificaciones en base de datos para el frontend
+   */
+  async createRefundNotifications(refund: any, type: string) {
+    try {
+      const notificationService = strapi.service('api::notification.notification');
+      
+      switch (type) {
+        case 'request_created':
+          // 1. Notificación para el usuario que solicitó el reembolso
+          await notificationService.createNotification({
+            type: 'refund_requested',
+            title: `🔄 Solicitud de Reembolso Creada`,
+            message: `Has solicitado un reembolso de €${refund.amount} para el pedido #${refund.order?.orderNumber}. Tu solicitud está siendo revisada.`,
+            recipientEmail: refund.user?.email,
+            recipientRole: 'comprador',
+            actionUrl: `/historial-compras`,
+            actionText: 'Ver Historial',
+            priority: 'normal'
+          });
+          
+          // 2. Notificación para la tienda
+          const store = refund.order?.order_items?.[0]?.product?.store;
+          if (store?.owner?.email) {
+            await notificationService.createNotification({
+              type: 'refund_requested',
+              title: `🔄 Nueva Solicitud de Reembolso`,
+              message: `El usuario ${refund.user?.email} ha solicitado un reembolso de €${refund.amount} para el pedido #${refund.order?.orderNumber}.`,
+              recipientEmail: store.owner.email,
+              recipientRole: 'vendedor',
+              actionUrl: `/dashboard/reembolsos`,
+              actionText: 'Revisar Solicitud',
+              priority: 'high'
+            });
+          }
+          break;
+          
+        case 'status_updated':
+          // Notificación de actualización de estado para el usuario
+          const statusMessages = {
+            'completed': `✅ Tu reembolso de €${refund.amount} ha sido procesado exitosamente.`,
+            'rejected': `❌ Tu solicitud de reembolso ha sido rechazada.`,
+            'processing': `🔄 Tu solicitud de reembolso ha sido aprobada y está siendo procesada.`,
+            'failed': `⚠️ Hubo un problema al procesar tu reembolso.`
+          };
+          
+          await notificationService.createNotification({
+            type: 'refund_requested',
+            title: `📊 Actualización de Reembolso`,
+            message: statusMessages[refund.refundStatus] || `Tu reembolso ha cambiado a estado: ${refund.refundStatus}`,
+            recipientEmail: refund.user?.email,
+            recipientRole: 'comprador',
+            actionUrl: `/historial-compras`,
+            actionText: 'Ver Historial',
+            priority: refund.refundStatus === 'completed' ? 'high' : 'normal'
+          });
+          break;
+          
+        case 'completed':
+          // Notificación de reembolso completado
+          await notificationService.createNotification({
+            type: 'refund_approved',
+            title: `✅ ¡Reembolso Completado!`,
+            message: `Tu reembolso de €${refund.amount} ha sido procesado exitosamente. El dinero será devuelto en 3-5 días hábiles.`,
+            recipientEmail: refund.user?.email,
+            recipientRole: 'comprador',
+            actionUrl: `/historial-compras`,
+            actionText: 'Ver Detalles',
+            priority: 'high'
+          });
+          break;
+      }
+      
+    } catch (error) {
+      console.error('Error creating refund notifications:', error);
+      // No fallar si las notificaciones fallan
     }
   },
 

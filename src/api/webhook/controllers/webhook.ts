@@ -479,7 +479,7 @@ export default {
       
       // Actualizar todos los reembolsos encontrados
       for (const refund of refunds) {
-        await strapi.entityService.update('api::refund.refund', refund.id, {
+        const updatedRefund = await strapi.entityService.update('api::refund.refund', refund.id, {
           data: {
             status: 'completed',
             processedAt: new Date(),
@@ -490,8 +490,22 @@ export default {
               completedAt: new Date().toISOString(),
               webhookProcessed: true
             }
+          },
+          populate: {
+            order: { populate: { user: true } },
+            payment: true,
+            user: true
           }
         });
+        
+        // Crear notificación de reembolso completado
+        try {
+          const refundService = strapi.service('api::refund.refund');
+          await refundService.createRefundNotifications(updatedRefund, 'completed');
+          console.log('📱 Notificación de reembolso completado creada desde webhook');
+        } catch (notificationError) {
+          console.error('⚠️ Error creando notificación desde webhook:', notificationError);
+        }
       }
       
       // Actualizar el estado del pago
