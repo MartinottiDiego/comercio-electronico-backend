@@ -608,17 +608,39 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           
           // 2. Notificación para la tienda
           const store = refund.order?.order_items?.[0]?.product?.store;
-          if (store?.owner?.email) {
-            await notificationService.createNotification({
-              type: 'refund_requested',
-              title: `🔄 Nueva Solicitud de Reembolso`,
-              message: `El usuario ${refund.user?.email} ha solicitado un reembolso de €${refund.amount} para el pedido #${refund.order?.orderNumber}.`,
-              recipientEmail: store.owner.email,
-              recipientRole: 'vendedor',
-              actionUrl: `/dashboard/reembolsos`,
-              actionText: 'Revisar Solicitud',
-              priority: 'high'
-            });
+          
+          if (store) {
+            // Hacer una consulta separada para obtener la tienda con su owner (igual que en sendRefundNotification)
+            const storeWithOwner = await strapi.entityService.findOne('api::store.store', store.id, {
+              populate: ['owner']
+            }) as any;
+            
+            if (storeWithOwner?.owner) {
+              // Obtener el email del owner de la tienda
+              const storeOwner = await strapi.entityService.findOne('plugin::users-permissions.user', storeWithOwner.owner.id, {
+                fields: ['email']
+              });
+              
+              if (storeOwner?.email) {
+                              await notificationService.createNotification({
+                type: 'refund_requested',
+                title: `🔄 Nueva Solicitud de Reembolso`,
+                message: `El usuario ${refund.user?.email} ha solicitado un reembolso de €${refund.amount} para el pedido #${refund.order?.orderNumber}.`,
+                recipientEmail: storeOwner.email,
+                recipientRole: 'tienda',
+                actionUrl: `/dashboard/reembolsos`,
+                actionText: 'Revisar Solicitud',
+                priority: 'high'
+              });
+                console.log('✅ [RefundService] Notificación para la tienda creada exitosamente');
+              } else {
+                console.error('❌ [RefundService] No se pudo obtener el email del owner de la tienda');
+              }
+            } else {
+              console.error('❌ [RefundService] La tienda no tiene owner asignado');
+            }
+          } else {
+            console.error('❌ [RefundService] No se pudo obtener la tienda del producto');
           }
           break;
           
