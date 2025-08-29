@@ -30,7 +30,7 @@
     "@strapi/plugin-users-permissions": "5.17.0",
     "@strapi/strapi": "5.17.0",
     "@types/nodemailer": "^6.4.17",
-    "axios": "^1.10.0",
+    "axios": "^1.11.0",
     "formdata-node": "^6.0.3",
     "google-auth-library": "^10.2.1",
     "nodemailer": "^7.0.5",
