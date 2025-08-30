@@ -32,16 +32,29 @@ export default factories.createCoreController('api::notification.notification', 
         }
       });
 
-      return {
+      const result = {
         success: true,
         notifications: notifications || [],
         unreadCount,
         lastSync: new Date().toISOString()
       };
+
+      return result;
       
     } catch (error) {
       console.error('Error en sync de notificaciones:', error);
       return ctx.internalServerError('Error interno del servidor');
+    }
+  },
+
+  // Método find personalizado
+  async find(ctx) {
+    try {
+      const result = await super.find(ctx);
+      return result;
+    } catch (error) {
+      console.error('Error en find de notificaciones:', error);
+      throw error;
     }
   }
 })); 
