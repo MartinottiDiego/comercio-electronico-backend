@@ -356,21 +356,16 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         // Determinar el documentId de la tienda
       let finalStoreDocumentId: string;
       
-      if (typeof storeId === 'string' && storeId.length > 10) {
-        // Si se pasa un string largo, asumir que es un documentId
+      if (typeof storeId === 'string' && storeId.length > 10 && !storeId.includes('@')) {
+        // Si se pasa un string largo SIN @, asumir que es un documentId
         finalStoreDocumentId = storeId;
-        console.log('🏪 [getStoreRefunds] Usando documentId de tienda directamente:', finalStoreDocumentId);
       } else if (typeof storeId === 'number') {
         // Si se pasa un número, buscar la tienda por ID y obtener su documentId
-        console.log('🔍 [getStoreRefunds] Buscando tienda por ID numérico:', storeId);
-        
         const storeById = await strapi.entityService.findOne('api::store.store', storeId);
 
         if (storeById) {
           finalStoreDocumentId = storeById.documentId;
-          console.log('🏪 [getStoreRefunds] Tienda encontrada por ID, documentId:', finalStoreDocumentId);
         } else {
-          console.log('⚠️ [getStoreRefunds] No se encontró tienda para el ID:', storeId);
           return {
             data: [],
             pagination: { page, limit, total: 0, pages: 0 }
@@ -378,21 +373,18 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       } else {
         // Si se pasa un string corto (email), buscar la tienda por email del owner
-        console.log('🔍 [getStoreRefunds] Buscando tienda por email:', storeId);
-        
         const storeByOwner = await strapi.entityService.findMany('api::store.store', {
-          filters: {
-            owner: {
-              email: storeId
-            }
-          }
+          populate: ['owner']
         });
 
-        if (storeByOwner && storeByOwner.length > 0) {
-          finalStoreDocumentId = storeByOwner[0].documentId;
-          console.log('🏪 [getStoreRefunds] Tienda encontrada por owner, documentId:', finalStoreDocumentId);
+        // Filtrar manualmente por email del owner
+        const storeWithOwner = storeByOwner.find((store: any) => 
+          store.owner && store.owner.email === storeId
+        );
+
+        if (storeWithOwner) {
+          finalStoreDocumentId = storeWithOwner.documentId;
         } else {
-          console.log('⚠️ [getStoreRefunds] No se encontró tienda para el email:', storeId);
           return {
             data: [],
             pagination: { page, limit, total: 0, pages: 0 }
@@ -400,15 +392,11 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       }
 
-      console.log('🆔 [getStoreRefunds] DocumentId de tienda:', finalStoreDocumentId);
-
       // Simplificar el filtro - obtener todos los reembolsos y filtrar después
       const baseFilters: any = {};
       if (status) {
         baseFilters.refundStatus = status;
       }
-
-      console.log('🔍 [getStoreRefunds] Filtros base:', baseFilters);
 
       const refunds = await strapi.entityService.findMany('api::refund.refund', {
         filters: baseFilters,
@@ -435,35 +423,25 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         limit: 100 // Aumentar límite para asegurar que obtenemos suficientes datos
       });
 
-      console.log('📦 [getStoreRefunds] Reembolsos obtenidos (sin filtrar):', refunds.length);
+
 
       // Filtrar por tienda después de obtener los datos
       const filteredRefunds = refunds.filter(refund => {
         const refundWithPopulatedData = refund as any;
         const orderItems = refundWithPopulatedData.order?.order_items || [];
         
-        console.log('🔍 [getStoreRefunds] Revisando reembolso:', {
-          refundId: refundWithPopulatedData.refundId,
-          orderItems: orderItems.length,
-          firstItem: orderItems[0]
-        });
+
         
         const isFromStore = orderItems.some(item => {
           const itemStoreDocumentId = item.product?.store?.documentId || item.product?.store?.id;
-          const matches = itemStoreDocumentId === finalStoreDocumentId;
-          console.log('🏪 [getStoreRefunds] Item store check:', {
-            itemStoreDocumentId,
-            finalStoreDocumentId,
-            matches,
-            product: item.product?.name || item.name
-          });
-          return matches;
+                     const matches = itemStoreDocumentId === finalStoreDocumentId;
+           return matches;
         });
         
         return isFromStore;
       });
 
-      console.log('✅ [getStoreRefunds] Reembolsos filtrados por tienda:', filteredRefunds.length);
+
 
       // Aplicar paginación manual
       const startIndex = (page - 1) * limit;
