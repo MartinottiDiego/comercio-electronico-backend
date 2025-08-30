@@ -76,5 +76,16 @@ export default {
         middlewares: ['api::refund.auth'], // Usar middleware personalizado
       },
     },
+    // Ruta de prueba para verificar relaciones
+    {
+      method: 'GET',
+      path: '/refunds/test-relations',
+      handler: 'refund.testRefundRelations',
+      config: {
+        auth: false, // Sin autenticación para pruebas
+        policies: [],
+        middlewares: []
+      }
+    },
   ],
 };

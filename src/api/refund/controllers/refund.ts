@@ -60,6 +60,13 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         limit: parseInt(limit)
       });
 
+      console.log('🔍 [Controller] Estructura de respuesta:', {
+        success: true,
+        data: result,
+        dataLength: result?.data?.length,
+        firstRefund: result?.data?.[0]
+      });
+      
       ctx.body = {
         success: true,
         data: result
@@ -248,6 +255,56 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
     } catch (error) {
       console.error('Error testing email:', error);
       return ctx.internalServerError('Error al probar email: ' + error.message);
+    }
+  },
+
+  /**
+   * Endpoint de prueba para verificar relaciones
+   */
+  async testRefundRelations(ctx) {
+    try {
+      console.log('🧪 [RefundController] Probando relaciones de reembolsos...');
+      
+      // Obtener un reembolso con todas las relaciones populadas
+      const testRefund = await strapi.entityService.findMany('api::refund.refund', {
+        populate: {
+          order: {
+            populate: {
+              user: true,
+              order_items: {
+                populate: {
+                  product: {
+                    populate: {
+                      store: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          payment: true,
+          user: true
+        },
+        limit: 1
+      });
+
+      console.log('📊 [RefundController] Reembolso de prueba encontrado:', JSON.stringify(testRefund, null, 2));
+
+      ctx.body = {
+        success: true,
+        message: 'Relaciones de reembolsos verificadas',
+        data: testRefund,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('❌ [RefundController] Error probando relaciones:', error);
+      ctx.body = {
+        success: false,
+        message: 'Error probando relaciones',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+      ctx.status = 500;
     }
   }
 })); 

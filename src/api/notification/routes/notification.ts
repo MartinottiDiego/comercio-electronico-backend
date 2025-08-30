@@ -30,7 +30,7 @@ export default factories.createCoreRouter('api::notification.notification', {
       auth: {
         scope: ['api::notification.notification.delete']
       }
-    },
+    }
   },
   only: ['find', 'findOne', 'create', 'update', 'delete'],
   except: [],
