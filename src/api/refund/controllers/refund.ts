@@ -60,6 +60,13 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         limit: parseInt(limit)
       });
 
+      console.log('🔍 [Controller] Estructura de respuesta:', {
+        success: true,
+        data: result,
+        dataLength: result?.data?.length,
+        firstRefund: result?.data?.[0]
+      });
+      
       ctx.body = {
         success: true,
         data: result
