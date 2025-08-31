@@ -75,13 +75,17 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       });
 
-      // 5. Enviar notificación por email
+      // 5. Enviar notificaciones por email y crear notificaciones en BD
       try {
         await this.sendRefundNotification(refund, 'request_created');
         console.log('📧 Email de solicitud de reembolso enviado exitosamente');
-      } catch (emailError) {
-        console.error('⚠️ Error enviando email de reembolso:', emailError);
-        // No fallar si el email falla, solo logear el error
+        
+        // Crear notificación en base de datos para el frontend
+        await this.createRefundNotifications(refund, 'request_created');
+        console.log('📱 Notificaciones de reembolso creadas en BD exitosamente');
+      } catch (notificationError) {
+        console.error('⚠️ Error enviando notificaciones de reembolso:', notificationError);
+        // No fallar si las notificaciones fallan, solo logear el error
       }
 
       return refund;
@@ -214,13 +218,32 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
             ...updateData.metadata,
             stripeRefundId: stripeResult.stripeRefundId
           };
+          
+          // Si se completó exitosamente, enviar notificación de completado
+          const finalStatus = 'completed';
         } catch (stripeError) {
           console.error('Error processing with Stripe:', stripeError);
-          updateData.refundStatus = 'failed';
-          updateData.metadata = {
-            ...updateData.metadata,
-            stripeError: stripeError.message
-          };
+          
+          // Si el cargo ya fue reembolsado, marcar como completed
+          if (stripeError.code === 'charge_already_refunded') {
+            console.log('✅ Cargo ya reembolsado en Stripe, marcando como completed');
+            updateData.refundStatus = 'completed';
+            updateData.processedAt = new Date();
+            updateData.processedBy = updatedBy.id;
+            updateData.metadata = {
+              ...updateData.metadata,
+              stripeError: 'Cargo ya reembolsado anteriormente en Stripe',
+              alreadyRefunded: true,
+              processedAt: new Date().toISOString()
+            };
+          } else {
+            // Otros errores de Stripe, marcar como failed
+            updateData.refundStatus = 'failed';
+            updateData.metadata = {
+              ...updateData.metadata,
+              stripeError: stripeError.message
+            };
+          }
         }
       }
 
@@ -233,7 +256,36 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       });
 
+      // Si el reembolso se completó, actualizar el estado del pago
+      if (updateData.refundStatus === 'completed') {
+        try {
+          const paymentId = (refund as any).payment?.id;
+          if (paymentId) {
+            await this.updatePaymentStatusToRefunded(paymentId);
+            console.log('✅ Payment status actualizado a refunded');
+          }
+        } catch (paymentError) {
+          console.error('⚠️ Error actualizando payment status:', paymentError);
+        }
+      }
+
+      // Enviar notificaciones por email y crear notificaciones en BD
       await this.sendRefundNotification(updatedRefund, 'status_updated');
+      
+      // Crear notificación en base de datos para el frontend
+      try {
+        // Si el reembolso se completó, enviar notificación especial
+        if (newStatus === 'completed') {
+          await this.createRefundNotifications(updatedRefund, 'completed');
+          console.log('📱 Notificación de reembolso completado creada en BD');
+        } else {
+          await this.createRefundNotifications(updatedRefund, 'status_updated');
+          console.log('📱 Notificación de actualización de estado creada en BD');
+        }
+      } catch (notificationError) {
+        console.error('⚠️ Error creando notificación de actualización:', notificationError);
+      }
+      
       return updatedRefund;
     } catch (error) {
       console.error('Error updating refund status:', error);
@@ -274,7 +326,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         reason: this.mapReasonToStripe(refund.reason) as any,
         metadata: {
           refundId: refund.refundId,
-          orderId: refund.order?.orderNumber || 'N/A',
+          orderId: (refund as any).order?.orderNumber || 'N/A',
           processedBy: processedBy.email
         }
       });
@@ -293,39 +345,72 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
    * Obtener reembolsos de una tienda
    */
   async getStoreRefunds(params: {
-    storeId: string;
+    storeId: string | number;
     status?: string;
     page: number;
     limit: number;
   }) {
     const { storeId, status, page, limit } = params;
 
-    try {
-      const filters: any = {
-        order: {
-          order_items: {
-            product: {
-              store: {
-                email: storeId
-              }
-            }
-          }
-        }
-      };
+          try {
+        // Determinar el documentId de la tienda
+      let finalStoreDocumentId: string;
+      
+      if (typeof storeId === 'string' && storeId.length > 10 && !storeId.includes('@')) {
+        // Si se pasa un string largo SIN @, asumir que es un documentId
+        finalStoreDocumentId = storeId;
+      } else if (typeof storeId === 'number') {
+        // Si se pasa un número, buscar la tienda por ID y obtener su documentId
+        const storeById = await strapi.entityService.findOne('api::store.store', storeId);
 
+        if (storeById) {
+          finalStoreDocumentId = storeById.documentId;
+        } else {
+          return {
+            data: [],
+            pagination: { page, limit, total: 0, pages: 0 }
+          };
+        }
+      } else {
+        // Si se pasa un string corto (email), buscar la tienda por email del owner
+        const storeByOwner = await strapi.entityService.findMany('api::store.store', {
+          populate: ['owner']
+        });
+
+        // Filtrar manualmente por email del owner
+        const storeWithOwner = storeByOwner.find((store: any) => 
+          store.owner && store.owner.email === storeId
+        );
+
+        if (storeWithOwner) {
+          finalStoreDocumentId = storeWithOwner.documentId;
+        } else {
+          return {
+            data: [],
+            pagination: { page, limit, total: 0, pages: 0 }
+          };
+        }
+      }
+
+      // Simplificar el filtro - obtener todos los reembolsos y filtrar después
+      const baseFilters: any = {};
       if (status) {
-        filters.refundStatus = status;
+        baseFilters.refundStatus = status;
       }
 
       const refunds = await strapi.entityService.findMany('api::refund.refund', {
-        filters,
+        filters: baseFilters,
         populate: {
           order: {
             populate: {
               user: true,
               order_items: {
                 populate: {
-                  product: true
+                  product: {
+                    populate: {
+                      store: true
+                    }
+                  }
                 }
               }
             }
@@ -335,22 +420,45 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         },
         sort: { createdAt: 'desc' },
         start: (page - 1) * limit,
-        limit
+        limit: 100 // Aumentar límite para asegurar que obtenemos suficientes datos
       });
 
-      const total = await strapi.entityService.count('api::refund.refund', { filters });
+
+
+      // Filtrar por tienda después de obtener los datos
+      const filteredRefunds = refunds.filter(refund => {
+        const refundWithPopulatedData = refund as any;
+        const orderItems = refundWithPopulatedData.order?.order_items || [];
+        
+
+        
+        const isFromStore = orderItems.some(item => {
+          const itemStoreDocumentId = item.product?.store?.documentId || item.product?.store?.id;
+                     const matches = itemStoreDocumentId === finalStoreDocumentId;
+           return matches;
+        });
+        
+        return isFromStore;
+      });
+
+
+
+      // Aplicar paginación manual
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedRefunds = filteredRefunds.slice(startIndex, endIndex);
 
       return {
-        data: refunds,
+        data: paginatedRefunds,
         pagination: {
           page,
           limit,
-          total,
-          pages: Math.ceil(total / limit)
+          total: filteredRefunds.length,
+          pages: Math.ceil(filteredRefunds.length / limit)
         }
       };
     } catch (error) {
-      console.error('Error getting store refunds:', error);
+      console.error('❌ [getStoreRefunds] Error:', error);
       throw error;
     }
   },
@@ -418,16 +526,45 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
     startDate?: Date;
     endDate?: Date;
   }) {
-    const { storeId, startDate, endDate } = params;
+    const { storeId: storeEmail, startDate, endDate } = params;
 
     try {
+      // Primero obtener la tienda por email del owner
+      const store = await strapi.entityService.findMany('api::store.store', {
+        filters: {
+          owner: {
+            email: storeEmail
+          }
+        },
+        fields: ['id']
+      });
+
+      if (!store || store.length === 0) {
+        // Si no se encuentra la tienda, devolver analytics vacíos
+        return {
+          summary: {
+            totalRefunds: 0,
+            pendingRefunds: 0,
+            completedRefunds: 0,
+            rejectedRefunds: 0,
+            totalRefundAmount: 0,
+            averageRefundAmount: 0,
+            approvalRate: 0
+          },
+          breakdowns: {
+            byReason: {}
+          }
+        };
+      }
+
+      const storeId = store[0].id;
+
+      // Ahora filtrar reembolsos por la tienda encontrada
       const filters: any = {
         order: {
           order_items: {
             product: {
-              store: {
-                email: storeId
-              }
+              store: storeId
             }
           }
         }
@@ -496,13 +633,13 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           // 1. Enviar email de confirmación al usuario que solicitó el reembolso
           await emailService.sendRefundRequestConfirmationToUser(
             refund,
-            refund.order,
+            (refund as any).order,
             userWithProfile
           );
           
           // 2. Enviar email de notificación a la tienda
           // Obtener el email del owner de la tienda
-          const store = refund.order?.order_items?.[0]?.product?.store;
+          const store = (refund as any).order?.order_items?.[0]?.product?.store;
           
           if (!store) {
             console.error('❌ No se pudo obtener la tienda del producto');
@@ -531,7 +668,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           
           await emailService.sendRefundRequestNotificationToStore(
             refund,
-            refund.order,
+            (refund as any).order,
             userWithProfile,
             storeOwner.email
           );
@@ -541,7 +678,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           // Notificar al cliente
           await emailService.sendRefundStatusUpdateEmail(
             refund,
-            refund.order,
+            (refund as any).order,
             refund.user
           );
           break;
@@ -550,7 +687,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           // Notificar reembolso completado
           await emailService.sendRefundCompletedEmail(
             refund,
-            refund.order,
+            (refund as any).order,
             refund.user
           );
           break;
@@ -559,6 +696,107 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
     } catch (error) {
       console.error('Error sending refund notification:', error);
       // No fallar si el email falla, solo logear el error
+    }
+  },
+
+  /**
+   * Crear notificaciones en base de datos para el frontend
+   */
+  async createRefundNotifications(refund: any, type: string) {
+    try {
+      const notificationService = strapi.service('api::notification.notification');
+      
+      switch (type) {
+        case 'request_created':
+          // 1. Notificación para el usuario que solicitó el reembolso
+          await notificationService.createNotification({
+            type: 'refund_requested',
+            title: `🔄 Solicitud de Reembolso Creada`,
+            message: `Has solicitado un reembolso de €${refund.amount} para el pedido #${(refund as any).order?.orderNumber}. Tu solicitud está siendo revisada.`,
+            recipientEmail: refund.user?.email,
+            recipientRole: 'comprador',
+            actionUrl: `/historial-compras`,
+            actionText: 'Ver Historial',
+            priority: 'normal'
+          });
+          
+          // 2. Notificación para la tienda
+          const store = (refund as any).order?.order_items?.[0]?.product?.store;
+          
+          if (store) {
+            // Hacer una consulta separada para obtener la tienda con su owner (igual que en sendRefundNotification)
+            const storeWithOwner = await strapi.entityService.findOne('api::store.store', store.id, {
+              populate: ['owner']
+            }) as any;
+            
+            if (storeWithOwner?.owner) {
+              // Obtener el email del owner de la tienda
+              const storeOwner = await strapi.entityService.findOne('plugin::users-permissions.user', storeWithOwner.owner.id, {
+                fields: ['email']
+              });
+              
+              if (storeOwner?.email) {
+                              await notificationService.createNotification({
+                type: 'refund_requested',
+                title: `🔄 Nueva Solicitud de Reembolso`,
+                message: `El usuario ${refund.user?.email} ha solicitado un reembolso de €${refund.amount} para el pedido #${(refund as any).order?.orderNumber}.`,
+                recipientEmail: storeOwner.email,
+                recipientRole: 'tienda',
+                actionUrl: `/dashboard/reembolsos`,
+                actionText: 'Revisar Solicitud',
+                priority: 'high'
+              });
+                console.log('✅ [RefundService] Notificación para la tienda creada exitosamente');
+              } else {
+                console.error('❌ [RefundService] No se pudo obtener el email del owner de la tienda');
+              }
+            } else {
+              console.error('❌ [RefundService] La tienda no tiene owner asignado');
+            }
+          } else {
+            console.error('❌ [RefundService] No se pudo obtener la tienda del producto');
+          }
+          break;
+          
+        case 'status_updated':
+          // Notificación de actualización de estado para el usuario
+          const statusMessages = {
+            'completed': `✅ Tu reembolso de €${refund.amount} ha sido procesado exitosamente.`,
+            'rejected': `❌ Tu solicitud de reembolso ha sido rechazada.`,
+            'processing': `🔄 Tu solicitud de reembolso ha sido aprobada y está siendo procesada.`,
+            'failed': `⚠️ Hubo un problema al procesar tu reembolso.`
+          };
+          
+          await notificationService.createNotification({
+            type: 'refund_requested',
+            title: `📊 Actualización de Reembolso`,
+            message: statusMessages[refund.refundStatus] || `Tu reembolso ha cambiado a estado: ${refund.refundStatus}`,
+            recipientEmail: refund.user?.email,
+            recipientRole: 'comprador',
+            actionUrl: `/historial-compras`,
+            actionText: 'Ver Historial',
+            priority: refund.refundStatus === 'completed' ? 'high' : 'normal'
+          });
+          break;
+          
+        case 'completed':
+          // Notificación de reembolso completado
+          await notificationService.createNotification({
+            type: 'refund_approved',
+            title: `✅ ¡Reembolso Completado!`,
+            message: `Tu reembolso de €${refund.amount} ha sido procesado exitosamente. El dinero será devuelto en 3-5 días hábiles.`,
+            recipientEmail: refund.user?.email,
+            recipientRole: 'comprador',
+            actionUrl: `/historial-compras`,
+            actionText: 'Ver Detalles',
+            priority: 'high'
+          });
+          break;
+      }
+      
+    } catch (error) {
+      console.error('Error creating refund notifications:', error);
+      // No fallar si las notificaciones fallan
     }
   },
 
@@ -594,5 +832,33 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
     };
 
     return mapping[reason] || 'requested_by_customer';
+  },
+
+  /**
+   * Actualizar el estado del pago a refunded
+   */
+  async updatePaymentStatusToRefunded(paymentId: number) {
+    try {
+      if (!paymentId) {
+        console.warn('⚠️ No se pudo obtener paymentId para actualizar');
+        return;
+      }
+
+      // Actualizar el estado del pago
+      await strapi.entityService.update('api::payment.payment', paymentId, {
+        data: {
+          paymentStatus: 'refunded',
+          gatewayResponse: {
+            refundedAt: new Date().toISOString(),
+            refundStatus: 'completed'
+          }
+        }
+      });
+
+      console.log(`✅ Payment ${paymentId} actualizado a status: refunded`);
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      throw error;
+    }
   }
 }));
