@@ -638,3 +638,4 @@ export class InsightsGenerators {
     return Array.from({ length: count }, () => ({ amount: Math.random() * 2000 }));
   }
 }
+
