@@ -470,6 +470,32 @@ export interface ApiAddressAddress extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAdminAdmin extends Struct.CollectionTypeSchema {
+  collectionName: 'admins';
+  info: {
+    description: 'Admin dashboard management';
+    displayName: 'Admin';
+    pluralName: 'admins';
+    singularName: 'admin';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::admin.admin'> &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiAuthAuth extends Struct.SingleTypeSchema {
   collectionName: 'auth';
   info: {
@@ -654,11 +680,18 @@ export interface ApiInsightInsight extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<1>;
     publishedAt: Schema.Attribute.DateTime;
     recommendations: Schema.Attribute.JSON;
+    scope: Schema.Attribute.Enumeration<['global', 'store', 'user']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'global'>;
     severity: Schema.Attribute.Enumeration<
       ['low', 'medium', 'high', 'critical']
     > &
       Schema.Attribute.Required;
     storeId: Schema.Attribute.String;
+    targetId: Schema.Attribute.String;
+    targetType: Schema.Attribute.Enumeration<['admin', 'store', 'user']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'admin'>;
     timestamp: Schema.Attribute.DateTime & Schema.Attribute.Required;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
@@ -666,7 +699,17 @@ export interface ApiInsightInsight extends Struct.CollectionTypeSchema {
         maxLength: 200;
       }>;
     type: Schema.Attribute.Enumeration<
-      ['sales', 'inventory', 'user_behavior', 'marketing', 'product', 'trend']
+      [
+        'sales',
+        'inventory',
+        'user_behavior',
+        'marketing',
+        'product',
+        'trend',
+        'system',
+        'performance',
+        'security',
+      ]
     > &
       Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
@@ -2285,6 +2328,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::address.address': ApiAddressAddress;
+      'api::admin.admin': ApiAdminAdmin;
       'api::auth.auth': ApiAuthAuth;
       'api::cart.cart': ApiCartCart;
       'api::category.category': ApiCategoryCategory;

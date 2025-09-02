@@ -713,4 +713,22 @@ export default class InsightsService {
       console.error('Error cleaning up old insights:', error);
     }
   }
+
+  // Obtener insights de todas las tiendas para el dashboard admin
+  async getAllInsights(limit = 50): Promise<Insight[]> {
+    try {
+      const insights = await this.strapi.db.query('api::insight.insight').findMany({
+        orderBy: { timestamp: 'desc' },
+        limit
+      });
+
+      return insights.map(insight => ({
+        ...insight,
+        timestamp: new Date(insight.timestamp)
+      }));
+    } catch (error) {
+      console.error('Error getting all insights:', error);
+      return [];
+    }
+  }
 } 
