@@ -202,6 +202,185 @@ export default factories.createCoreController('api::insight.insight', ({ strapi 
     }
   },
 
+  // Obtener insights para el dashboard admin (todas las tiendas)
+  async getDashboardInsights(ctx: Context) {
+    try {
+      const { limit = 50, unreadOnly = false, severity, type } = ctx.query;
+      
+      // Obtener insights directamente de la base de datos
+      const insights = await strapi.db.query('api::insight.insight').findMany({
+        orderBy: { timestamp: 'desc' },
+        limit: parseInt(limit as string) || 50
+      });
+
+      let filteredInsights = insights.map(insight => ({
+        ...insight,
+        timestamp: new Date(insight.timestamp)
+      }));
+
+      // Filtrar por tipo si se especifica
+      if (type) {
+        filteredInsights = filteredInsights.filter(insight => insight.type === type);
+      }
+
+      // Filtrar por severidad si se especifica
+      if (severity) {
+        filteredInsights = filteredInsights.filter(insight => insight.severity === severity);
+      }
+
+      // Filtrar solo no leídos si se especifica
+      if (unreadOnly === 'true') {
+        filteredInsights = filteredInsights.filter(insight => !insight.isRead);
+      }
+
+      // Ordenar por prioridad y fecha
+      filteredInsights.sort((a, b) => {
+        if (a.priority !== b.priority) {
+          return b.priority - a.priority;
+        }
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+
+      return ctx.send({
+        success: true,
+        data: {
+          insights: filteredInsights,
+          total: filteredInsights.length,
+          summary: {
+            total: filteredInsights.length,
+            unread: filteredInsights.filter(i => !i.isRead).length,
+            critical: filteredInsights.filter(i => i.severity === 'critical').length,
+            high: filteredInsights.filter(i => i.severity === 'high').length,
+            medium: filteredInsights.filter(i => i.severity === 'medium').length,
+            low: filteredInsights.filter(i => i.severity === 'low').length
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error getting dashboard insights:', error);
+      return ctx.internalServerError('Error obteniendo insights del dashboard');
+    }
+  },
+
+  // Obtener insights para el dashboard admin (globales)
+  async getAdminDashboardInsights(ctx: Context) {
+    try {
+      const { limit = 50, type, severity, unreadOnly = false } = ctx.query;
+      
+      // Obtener insights globales (scope: 'global' y targetType: 'admin')
+      // También excluir insights de tipo inventory, sales, user_behavior que son para tiendas
+      let insights = await strapi.db.query('api::insight.insight').findMany({
+        where: {
+          scope: 'global',
+          targetType: 'admin',
+          type: {
+            $notIn: ['inventory', 'sales', 'user_behavior', 'marketing', 'product']
+          }
+        },
+        orderBy: { timestamp: 'desc' },
+        limit: parseInt(limit as string)
+      });
+
+      // Filtrar por tipo si se especifica
+      if (type) {
+        insights = insights.filter(insight => insight.type === type);
+      }
+
+      // Filtrar por severidad si se especifica
+      if (severity) {
+        insights = insights.filter(insight => insight.severity === severity);
+      }
+
+      // Filtrar solo no leídos si se especifica
+      if (unreadOnly === 'true') {
+        insights = insights.filter(insight => !insight.isRead);
+      }
+
+      // Calcular resumen
+      const summary = {
+        total: insights.length,
+        unread: insights.filter(i => !i.isRead).length,
+        critical: insights.filter(i => i.severity === 'critical').length,
+        high: insights.filter(i => i.severity === 'high').length,
+        medium: insights.filter(i => i.severity === 'medium').length,
+        low: insights.filter(i => i.severity === 'low').length
+      };
+
+      return {
+        success: true,
+        data: {
+          insights,
+          total: insights.length,
+          summary
+        }
+      };
+    } catch (error) {
+      console.error('Error getting admin dashboard insights:', error);
+      return ctx.internalServerError('Error obteniendo insights del admin');
+    }
+  },
+
+  // Obtener insights para el dashboard de tienda (específicos)
+  async getStoreDashboardInsights(ctx: Context) {
+    try {
+      const { storeId } = ctx.params;
+      const { limit = 50, type, severity, unreadOnly = false } = ctx.query;
+      
+      if (!storeId) {
+        return ctx.badRequest('storeId es requerido');
+      }
+
+      // Obtener insights específicos de la tienda
+      let insights = await strapi.db.query('api::insight.insight').findMany({
+        where: {
+          $or: [
+            { scope: 'store', targetId: storeId },
+            { storeId: storeId }
+          ]
+        },
+        orderBy: { timestamp: 'desc' },
+        limit: parseInt(limit as string)
+      });
+
+      // Filtrar por tipo si se especifica
+      if (type) {
+        insights = insights.filter(insight => insight.type === type);
+      }
+
+      // Filtrar por severidad si se especifica
+      if (severity) {
+        insights = insights.filter(insight => insight.severity === severity);
+      }
+
+      // Filtrar solo no leídos si se especifica
+      if (unreadOnly === 'true') {
+        insights = insights.filter(insight => !insight.isRead);
+      }
+
+      // Calcular resumen
+      const summary = {
+        total: insights.length,
+        unread: insights.filter(i => !i.isRead).length,
+        critical: insights.filter(i => i.severity === 'critical').length,
+        high: insights.filter(i => i.severity === 'high').length,
+        medium: insights.filter(i => i.severity === 'medium').length,
+        low: insights.filter(i => i.severity === 'low').length
+      };
+
+      return {
+        success: true,
+        data: {
+          insights,
+          total: insights.length,
+          summary
+        }
+      };
+    } catch (error) {
+      console.error('Error getting store dashboard insights:', error);
+      return ctx.internalServerError('Error obteniendo insights de la tienda');
+    }
+  },
+
   // Limpiar insights antiguos
   async cleanupOldInsights(ctx: Context) {
     try {
@@ -217,6 +396,29 @@ export default factories.createCoreController('api::insight.insight', ({ strapi 
     } catch (error) {
       console.error('Error cleaning up old insights:', error);
       return ctx.internalServerError('Error limpiando insights antiguos');
+    }
+  },
+
+  // Crear un insight manualmente (para desarrollo/pruebas)
+  async createInsight(ctx: Context) {
+    try {
+      const insightData = ctx.request.body;
+      
+      if (!insightData.data || !insightData.data.type || !insightData.data.title || !insightData.data.description || !insightData.data.severity || !insightData.data.category) {
+        return ctx.badRequest('Faltan campos requeridos: type, title, description, severity, category');
+      }
+
+      const insight = await strapi.entityService.create('api::insight.insight', {
+        data: insightData.data
+      });
+
+      return {
+        success: true,
+        data: insight
+      };
+    } catch (error) {
+      console.error('Error creating insight:', error);
+      return ctx.internalServerError('Error creando insight');
     }
   }
 }));

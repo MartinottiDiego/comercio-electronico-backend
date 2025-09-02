@@ -20,7 +20,10 @@
         "user_behavior",
         "marketing",
         "product",
-        "trend"
+        "trend",
+        "system",
+        "performance",
+        "security"
       ],
       "required": true
     },
@@ -46,6 +49,29 @@
     "category": {
       "type": "string",
       "required": true
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": [
+        "global",
+        "store",
+        "user"
+      ],
+      "required": true,
+      "default": "global"
+    },
+    "targetType": {
+      "type": "enumeration",
+      "enum": [
+        "admin",
+        "store",
+        "user"
+      ],
+      "required": true,
+      "default": "admin"
+    },
+    "targetId": {
+      "type": "string"
     },
     "data": {
       "type": "json"
