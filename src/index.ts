@@ -17,12 +17,12 @@ export default {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }) {
-    console.log('🚀 [BOOTSTRAP] Inicializando servicios del sistema...');
+
 
     try {
       // Inicializar sistema de automatización de insights
       await insightsAutomationService.initialize(strapi);
-      console.log('✅ [BOOTSTRAP] Sistema de automatización de insights inicializado');
+
     } catch (error) {
       console.error('❌ [BOOTSTRAP] Error inicializando automatización de insights:', error);
     }

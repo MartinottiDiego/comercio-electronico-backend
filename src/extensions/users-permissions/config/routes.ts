@@ -46,5 +46,32 @@ export default (plugin: StrapiPlugin) => {
     };
   }
 
+  // Agregar rutas personalizadas para eliminación lógica
+  const userRoutes = [
+    {
+      method: 'PUT',
+      path: '/users/:id/restore',
+      handler: 'user.restore',
+      config: {
+        auth: true,
+        policies: [],
+        middlewares: []
+      }
+    },
+    {
+      method: 'GET',
+      path: '/users/deleted',
+      handler: 'user.findDeleted',
+      config: {
+        auth: true,
+        policies: [],
+        middlewares: []
+      }
+    }
+  ];
+
+  // Agregar las rutas personalizadas al plugin
+  plugin.routes['content-api'].routes.push(...userRoutes);
+
   return plugin;
 };

@@ -502,7 +502,7 @@ export default {
         try {
           const refundService = strapi.service('api::refund.refund');
           await refundService.createRefundNotifications(updatedRefund, 'completed');
-          console.log('📱 Notificación de reembolso completado creada desde webhook');
+
         } catch (notificationError) {
           console.error('⚠️ Error creando notificación desde webhook:', notificationError);
         }

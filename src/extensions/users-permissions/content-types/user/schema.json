@@ -129,6 +129,10 @@
     "isGoogleUser": {
       "type": "boolean",
       "default": false
+    },
+    "deletedAt": {
+      "type": "datetime",
+      "required": false
     }
   }
 }

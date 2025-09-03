@@ -21,9 +21,14 @@
         "marketing",
         "product",
         "trend",
-        "system",
-        "performance",
-        "security"
+        "growth",
+        "revenue",
+        "engagement",
+        "conversion",
+        "user_registration",
+        "store_activity",
+        "top_products",
+        "category_trends"
       ],
       "required": true
     },

@@ -8,7 +8,7 @@ export interface InsightTrigger {
   description: string;
   schedule: string; // Cron expression
   enabled: boolean;
-  insightType: 'sales' | 'inventory' | 'user_behavior' | 'marketing' | 'product' | 'trend' | 'system' | 'performance' | 'security';
+  insightType: 'sales' | 'inventory' | 'user_behavior' | 'marketing' | 'product' | 'trend' | 'growth' | 'revenue' | 'engagement' | 'conversion' | 'user_registration' | 'store_activity' | 'top_products' | 'category_trends';
   scope: 'global' | 'store' | 'user';
   targetType: 'admin' | 'store' | 'user';
   conditions: any; // Condiciones específicas para cada trigger
@@ -43,12 +43,12 @@ export class InsightsAutomationService {
    */
   public async initialize(strapiInstance: any): Promise<void> {
     if (this.isInitialized) {
-      console.log('🔄 [INSIGHTS AUTOMATION] Sistema ya inicializado');
+
       return;
     }
 
     try {
-      console.log('🚀 [INSIGHTS AUTOMATION] Inicializando sistema de automatización...');
+
       
       // Guardar la instancia de Strapi
       this.strapi = strapiInstance;
@@ -60,7 +60,7 @@ export class InsightsAutomationService {
       await this.scheduleAllTriggers();
       
       this.isInitialized = true;
-      console.log('✅ [INSIGHTS AUTOMATION] Sistema inicializado correctamente');
+
     } catch (error) {
       console.error('❌ [INSIGHTS AUTOMATION] Error inicializando sistema:', error);
       throw error;
@@ -72,120 +72,105 @@ export class InsightsAutomationService {
    */
   private async loadTriggers(): Promise<void> {
     const defaultTriggers: InsightTrigger[] = [
-      // Triggers para Admin Dashboard (Globales)
+      // Triggers para Admin Dashboard (Globales) - Enfocados en el negocio
       {
-        id: 'system-performance-check',
-        name: 'Verificación de Rendimiento del Sistema',
-        description: 'Monitorea el rendimiento del sistema cada 15 minutos',
-        schedule: '*/15 * * * *', // Cada 15 minutos
+        id: 'daily-growth-insights',
+        name: 'Insights de Crecimiento Diario',
+        description: 'Genera insights sobre crecimiento de usuarios y tiendas cada día',
+        schedule: '0 9 * * *', // Cada día a las 9:00 AM
         enabled: true,
-        insightType: 'performance',
+        insightType: 'growth',
         scope: 'global',
         targetType: 'admin',
         conditions: {
-          responseTimeThreshold: 2000, // ms
-          memoryUsageThreshold: 80, // %
-          cpuUsageThreshold: 80 // %
+          minNewUsers: 5,
+          minNewStores: 1
         }
       },
       {
-        id: 'security-monitoring',
-        name: 'Monitoreo de Seguridad',
-        description: 'Detecta intentos de login fallidos y actividad sospechosa',
-        schedule: '*/5 * * * *', // Cada 5 minutos
+        id: 'daily-revenue-insights',
+        name: 'Insights de Ingresos Diarios',
+        description: 'Genera insights sobre ingresos y ventas destacadas cada día',
+        schedule: '0 18 * * *', // Cada día a las 6:00 PM
         enabled: true,
-        insightType: 'security',
+        insightType: 'revenue',
         scope: 'global',
         targetType: 'admin',
         conditions: {
-          failedLoginThreshold: 10, // intentos por minuto
-          suspiciousIpThreshold: 5 // IPs diferentes en 5 minutos
+          minRevenue: 1000,
+          minSaleAmount: 500
         }
       },
       {
-        id: 'system-health-check',
-        name: 'Verificación de Salud del Sistema',
-        description: 'Verifica la salud general del sistema cada hora',
-        schedule: '0 * * * *', // Cada hora
-        enabled: true,
-        insightType: 'system',
-        scope: 'global',
-        targetType: 'admin',
-        conditions: {
-          diskUsageThreshold: 85, // %
-          databaseConnectionsThreshold: 80 // %
-        }
-      },
-      {
-        id: 'sales-trend-analysis',
-        name: 'Análisis de Tendencias de Ventas',
-        description: 'Analiza tendencias de ventas globales cada 6 horas',
+        id: 'engagement-insights',
+        name: 'Insights de Engagement',
+        description: 'Genera insights sobre engagement de usuarios cada 6 horas',
         schedule: '0 */6 * * *', // Cada 6 horas
         enabled: true,
-        insightType: 'trend',
+        insightType: 'engagement',
         scope: 'global',
         targetType: 'admin',
         conditions: {
-          minOrdersForAnalysis: 10,
-          trendPeriodHours: 24
+          minActiveUsers: 10,
+          minSearchCount: 5
+        }
+      },
+      {
+        id: 'conversion-insights',
+        name: 'Insights de Conversión',
+        description: 'Genera insights sobre conversión y recuperación de carritos cada 4 horas',
+        schedule: '0 */4 * * *', // Cada 4 horas
+        enabled: true,
+        insightType: 'conversion',
+        scope: 'global',
+        targetType: 'admin',
+        conditions: {
+          minConversionRate: 1.0,
+          minRecoveredCarts: 1
+        }
+      },
+      {
+        id: 'category-trends-insights',
+        name: 'Insights de Tendencias de Categorías',
+        description: 'Genera insights sobre categorías en tendencia cada 12 horas',
+        schedule: '0 */12 * * *', // Cada 12 horas
+        enabled: true,
+        insightType: 'category_trends',
+        scope: 'global',
+        targetType: 'admin',
+        conditions: {
+          minGrowthPercent: 10,
+          minSearchCount: 20
         }
       },
 
       // Triggers para Store Dashboard (Específicos por tienda)
       {
-        id: 'inventory-low-stock-check',
-        name: 'Verificación de Stock Bajo',
-        description: 'Verifica productos con stock bajo cada 30 minutos',
-        schedule: '*/30 * * * *', // Cada 30 minutos
-        enabled: true,
-        insightType: 'inventory',
-        scope: 'store',
-        targetType: 'store',
-        conditions: {
-          lowStockThreshold: 10, // unidades
-          criticalStockThreshold: 5 // unidades
-        }
-      },
-      {
-        id: 'store-sales-analysis',
-        name: 'Análisis de Ventas por Tienda',
-        description: 'Analiza ventas específicas de cada tienda cada 2 horas',
+        id: 'store-sales-insights',
+        name: 'Insights de Ventas por Tienda',
+        description: 'Genera insights sobre ventas específicas de cada tienda cada 2 horas',
         schedule: '0 */2 * * *', // Cada 2 horas
         enabled: true,
         insightType: 'sales',
         scope: 'store',
         targetType: 'store',
         conditions: {
-          minSalesForAnalysis: 5,
+          minSales: 100,
           comparisonPeriodHours: 24
         }
       },
       {
-        id: 'user-behavior-analysis',
-        name: 'Análisis de Comportamiento de Usuarios',
-        description: 'Analiza comportamiento de usuarios por tienda cada 4 horas',
+        id: 'store-inventory-insights',
+        name: 'Insights de Inventario por Tienda',
+        description: 'Genera insights sobre inventario de cada tienda cada 4 horas',
         schedule: '0 */4 * * *', // Cada 4 horas
         enabled: true,
-        insightType: 'user_behavior',
+        insightType: 'inventory',
         scope: 'store',
         targetType: 'store',
         conditions: {
-          minUsersForAnalysis: 10,
-          analysisPeriodHours: 24
-        }
-      },
-      {
-        id: 'product-performance-analysis',
-        name: 'Análisis de Rendimiento de Productos',
-        description: 'Analiza rendimiento de productos por tienda cada 6 horas',
-        schedule: '0 */6 * * *', // Cada 6 horas
-        enabled: true,
-        insightType: 'product',
-        scope: 'store',
-        targetType: 'store',
-        conditions: {
-          minProductsForAnalysis: 5,
-          analysisPeriodHours: 48
+          lowStockThreshold: 10,
+          criticalStockThreshold: 5
         }
       }
     ];
@@ -195,7 +180,7 @@ export class InsightsAutomationService {
       this.triggers.set(trigger.id, trigger);
     }
 
-    console.log(`📋 [INSIGHTS AUTOMATION] Cargados ${defaultTriggers.length} triggers`);
+
   }
 
   /**
@@ -216,7 +201,7 @@ export class InsightsAutomationService {
     try {
       const task = cron.schedule(trigger.schedule, async () => {
         try {
-          console.log(`🔄 [INSIGHTS AUTOMATION] Ejecutando trigger: ${trigger.name}`);
+
           await this.executeTrigger(trigger);
         } catch (error) {
           console.error(`❌ [INSIGHTS AUTOMATION] Error ejecutando trigger ${trigger.name}:`, error);
@@ -231,7 +216,7 @@ export class InsightsAutomationService {
       const nextRun = this.calculateNextRun(trigger.schedule);
       trigger.nextRun = nextRun;
       
-      console.log(`⏰ [INSIGHTS AUTOMATION] Trigger programado: ${trigger.name} - Próxima ejecución: ${nextRun.toISOString()}`);
+
     } catch (error) {
       console.error(`❌ [INSIGHTS AUTOMATION] Error programando trigger ${trigger.name}:`, error);
     }
@@ -250,7 +235,7 @@ export class InsightsAutomationService {
     };
 
     try {
-      console.log(`🎯 [INSIGHTS AUTOMATION] Ejecutando: ${trigger.name}`);
+
 
       // Verificar que strapi esté disponible antes de ejecutar
       if (!this.strapi || !this.strapi.entityService) {
@@ -262,29 +247,26 @@ export class InsightsAutomationService {
 
       // Ejecutar generador específico según el tipo
       switch (trigger.insightType) {
-        case 'system':
-          result.insightsCreated = await this.generateSystemInsights(trigger);
+        case 'growth':
+          result.insightsCreated = await this.generateGrowthInsights(trigger);
           break;
-        case 'performance':
-          result.insightsCreated = await this.generatePerformanceInsights(trigger);
+        case 'revenue':
+          result.insightsCreated = await this.generateRevenueInsights(trigger);
           break;
-        case 'security':
-          result.insightsCreated = await this.generateSecurityInsights(trigger);
+        case 'engagement':
+          result.insightsCreated = await this.generateEngagementInsights(trigger);
           break;
-        case 'inventory':
-          result.insightsCreated = await this.generateInventoryInsights(trigger);
+        case 'conversion':
+          result.insightsCreated = await this.generateConversionInsights(trigger);
+          break;
+        case 'category_trends':
+          result.insightsCreated = await this.generateCategoryTrendsInsights(trigger);
           break;
         case 'sales':
           result.insightsCreated = await this.generateSalesInsights(trigger);
           break;
-        case 'user_behavior':
-          result.insightsCreated = await this.generateUserBehaviorInsights(trigger);
-          break;
-        case 'product':
-          result.insightsCreated = await this.generateProductInsights(trigger);
-          break;
-        case 'trend':
-          result.insightsCreated = await this.generateTrendInsights(trigger);
+        case 'inventory':
+          result.insightsCreated = await this.generateInventoryInsights(trigger);
           break;
         default:
           throw new Error(`Tipo de insight no soportado: ${trigger.insightType}`);
@@ -293,7 +275,7 @@ export class InsightsAutomationService {
       // Calcular próxima ejecución
       trigger.nextRun = this.calculateNextRun(trigger.schedule);
 
-      console.log(`✅ [INSIGHTS AUTOMATION] Trigger completado: ${trigger.name} - Insights creados: ${result.insightsCreated}`);
+
 
     } catch (error) {
       result.success = false;
@@ -302,7 +284,7 @@ export class InsightsAutomationService {
       
       // Si es un error de strapi no disponible, intentar reintentar más tarde
       if (error instanceof Error && error.message.includes('Strapi no está disponible')) {
-        console.log(`🔄 [INSIGHTS AUTOMATION] Reintentando trigger ${trigger.name} en 5 minutos...`);
+
         // Programar reintento en 5 minutos
         setTimeout(async () => {
           try {
@@ -320,29 +302,47 @@ export class InsightsAutomationService {
   }
 
   /**
-   * Genera insights de sistema
+   * Genera insights de crecimiento
    */
-  private async generateSystemInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`🔧 [INSIGHTS AUTOMATION] Generando insights de sistema...`);
-    const insights = await InsightsGenerators.generateSystemInsights(trigger);
+  private async generateGrowthInsights(trigger: InsightTrigger): Promise<number> {
+
+    const insights = await InsightsGenerators.generateGrowthInsights(trigger);
     return await this.saveInsights(insights);
   }
 
   /**
-   * Genera insights de rendimiento
+   * Genera insights de ingresos
    */
-  private async generatePerformanceInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`⚡ [INSIGHTS AUTOMATION] Generando insights de rendimiento...`);
-    const insights = await InsightsGenerators.generatePerformanceInsights(trigger);
+  private async generateRevenueInsights(trigger: InsightTrigger): Promise<number> {
+
+    const insights = await InsightsGenerators.generateRevenueInsights(trigger);
     return await this.saveInsights(insights);
   }
 
   /**
-   * Genera insights de seguridad
+   * Genera insights de engagement
    */
-  private async generateSecurityInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`🔒 [INSIGHTS AUTOMATION] Generando insights de seguridad...`);
-    const insights = await InsightsGenerators.generateSecurityInsights(trigger);
+  private async generateEngagementInsights(trigger: InsightTrigger): Promise<number> {
+
+    const insights = await InsightsGenerators.generateEngagementInsights(trigger);
+    return await this.saveInsights(insights);
+  }
+
+  /**
+   * Genera insights de conversión
+   */
+  private async generateConversionInsights(trigger: InsightTrigger): Promise<number> {
+
+    const insights = await InsightsGenerators.generateConversionInsights(trigger);
+    return await this.saveInsights(insights);
+  }
+
+  /**
+   * Genera insights de tendencias de categorías
+   */
+  private async generateCategoryTrendsInsights(trigger: InsightTrigger): Promise<number> {
+
+    const insights = await InsightsGenerators.generateCategoryTrendsInsights(trigger);
     return await this.saveInsights(insights);
   }
 
@@ -350,7 +350,7 @@ export class InsightsAutomationService {
    * Genera insights de inventario
    */
   private async generateInventoryInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`📦 [INSIGHTS AUTOMATION] Generando insights de inventario...`);
+
     const insights = await InsightsGenerators.generateInventoryInsights(trigger);
     return await this.saveInsights(insights);
   }
@@ -359,35 +359,8 @@ export class InsightsAutomationService {
    * Genera insights de ventas
    */
   private async generateSalesInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`💰 [INSIGHTS AUTOMATION] Generando insights de ventas...`);
+
     const insights = await InsightsGenerators.generateSalesInsights(trigger);
-    return await this.saveInsights(insights);
-  }
-
-  /**
-   * Genera insights de comportamiento de usuario
-   */
-  private async generateUserBehaviorInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`👥 [INSIGHTS AUTOMATION] Generando insights de comportamiento de usuario...`);
-    const insights = await InsightsGenerators.generateUserBehaviorInsights(trigger);
-    return await this.saveInsights(insights);
-  }
-
-  /**
-   * Genera insights de productos
-   */
-  private async generateProductInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`🛍️ [INSIGHTS AUTOMATION] Generando insights de productos...`);
-    const insights = await InsightsGenerators.generateProductInsights(trigger);
-    return await this.saveInsights(insights);
-  }
-
-  /**
-   * Genera insights de tendencias
-   */
-  private async generateTrendInsights(trigger: InsightTrigger): Promise<number> {
-    console.log(`📈 [INSIGHTS AUTOMATION] Generando insights de tendencias...`);
-    const insights = await InsightsGenerators.generateTrendInsights(trigger);
     return await this.saveInsights(insights);
   }
 
@@ -424,7 +397,7 @@ export class InsightsAutomationService {
           }
         });
         savedCount++;
-        console.log(`✅ [INSIGHTS AUTOMATION] Insight guardado: ${insightData.title}`);
+
 
         // Enviar notificaciones para insights importantes
         if (insightData.severity === 'critical' || insightData.severity === 'high') {
@@ -490,7 +463,7 @@ export class InsightsAutomationService {
    * Detiene el sistema de automatización
    */
   public stop(): void {
-    console.log('🛑 [INSIGHTS AUTOMATION] Deteniendo sistema de automatización...');
+
     cron.getTasks().forEach(task => task.stop());
     this.isInitialized = false;
   }

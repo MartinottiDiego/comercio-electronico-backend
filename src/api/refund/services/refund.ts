@@ -78,11 +78,11 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       // 5. Enviar notificaciones por email y crear notificaciones en BD
       try {
         await this.sendRefundNotification(refund, 'request_created');
-        console.log('📧 Email de solicitud de reembolso enviado exitosamente');
+
         
         // Crear notificación en base de datos para el frontend
         await this.createRefundNotifications(refund, 'request_created');
-        console.log('📱 Notificaciones de reembolso creadas en BD exitosamente');
+
       } catch (notificationError) {
         console.error('⚠️ Error enviando notificaciones de reembolso:', notificationError);
         // No fallar si las notificaciones fallan, solo logear el error
@@ -226,7 +226,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           
           // Si el cargo ya fue reembolsado, marcar como completed
           if (stripeError.code === 'charge_already_refunded') {
-            console.log('✅ Cargo ya reembolsado en Stripe, marcando como completed');
+
             updateData.refundStatus = 'completed';
             updateData.processedAt = new Date();
             updateData.processedBy = updatedBy.id;
@@ -262,7 +262,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           const paymentId = (refund as any).payment?.id;
           if (paymentId) {
             await this.updatePaymentStatusToRefunded(paymentId);
-            console.log('✅ Payment status actualizado a refunded');
+
           }
         } catch (paymentError) {
           console.error('⚠️ Error actualizando payment status:', paymentError);
@@ -277,10 +277,10 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         // Si el reembolso se completó, enviar notificación especial
         if (newStatus === 'completed') {
           await this.createRefundNotifications(updatedRefund, 'completed');
-          console.log('📱 Notificación de reembolso completado creada en BD');
+
         } else {
           await this.createRefundNotifications(updatedRefund, 'status_updated');
-          console.log('📱 Notificación de actualización de estado creada en BD');
+
         }
       } catch (notificationError) {
         console.error('⚠️ Error creando notificación de actualización:', notificationError);
@@ -746,7 +746,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
                 actionText: 'Revisar Solicitud',
                 priority: 'high'
               });
-                console.log('✅ [RefundService] Notificación para la tienda creada exitosamente');
+
               } else {
                 console.error('❌ [RefundService] No se pudo obtener el email del owner de la tienda');
               }
@@ -855,7 +855,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       });
 
-      console.log(`✅ Payment ${paymentId} actualizado a status: refunded`);
+
     } catch (error) {
       console.error('Error updating payment status:', error);
       throw error;
