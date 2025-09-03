@@ -60,12 +60,7 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         limit: parseInt(limit)
       });
 
-      console.log('🔍 [Controller] Estructura de respuesta:', {
-        success: true,
-        data: result,
-        dataLength: result?.data?.length,
-        firstRefund: result?.data?.[0]
-      });
+
       
       ctx.body = {
         success: true,
@@ -263,7 +258,7 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
    */
   async testRefundRelations(ctx) {
     try {
-      console.log('🧪 [RefundController] Probando relaciones de reembolsos...');
+
       
       // Obtener un reembolso con todas las relaciones populadas
       const testRefund = await strapi.entityService.findMany('api::refund.refund', {
@@ -288,7 +283,7 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         limit: 1
       });
 
-      console.log('📊 [RefundController] Reembolso de prueba encontrado:', JSON.stringify(testRefund, null, 2));
+
 
       ctx.body = {
         success: true,

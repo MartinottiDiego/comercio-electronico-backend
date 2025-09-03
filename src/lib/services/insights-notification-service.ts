@@ -36,7 +36,7 @@ export class InsightsNotificationService {
    */
   public configure(config: Partial<InsightNotificationConfig>): void {
     this.config = { ...this.config, ...config };
-    console.log('🔔 [INSIGHTS NOTIFICATIONS] Configuración actualizada:', this.config);
+
   }
 
   /**
@@ -44,17 +44,17 @@ export class InsightsNotificationService {
    */
   public async notifyInsight(insight: InsightData): Promise<void> {
     if (!this.config.enabled) {
-      console.log('🔕 [INSIGHTS NOTIFICATIONS] Notificaciones deshabilitadas');
+
       return;
     }
 
     if (this.config.criticalOnly && !['critical', 'high'].includes(insight.severity)) {
-      console.log('🔕 [INSIGHTS NOTIFICATIONS] Solo notificaciones críticas habilitadas');
+
       return;
     }
 
     try {
-      console.log(`🔔 [INSIGHTS NOTIFICATIONS] Enviando notificaciones para: ${insight.title}`);
+
 
       // Enviar notificación push
       if (this.config.pushNotifications) {
@@ -71,7 +71,7 @@ export class InsightsNotificationService {
         await this.sendWebhookNotification(insight);
       }
 
-      console.log(`✅ [INSIGHTS NOTIFICATIONS] Notificaciones enviadas para: ${insight.title}`);
+
 
     } catch (error) {
       console.error(`❌ [INSIGHTS NOTIFICATIONS] Error enviando notificaciones:`, error);
@@ -87,7 +87,7 @@ export class InsightsNotificationService {
       const subscriptions = await this.getActiveSubscriptions(insight.targetType, insight.targetId);
       
       if (subscriptions.length === 0) {
-        console.log('📱 [INSIGHTS NOTIFICATIONS] No hay suscripciones activas para notificaciones push');
+
         return;
       }
 
@@ -118,7 +118,7 @@ export class InsightsNotificationService {
         }
       }
 
-      console.log(`📱 [INSIGHTS NOTIFICATIONS] Push notifications enviadas a ${subscriptions.length} suscripciones`);
+
 
     } catch (error) {
       console.error('❌ [INSIGHTS NOTIFICATIONS] Error en push notifications:', error);
@@ -134,7 +134,7 @@ export class InsightsNotificationService {
       const recipients = await this.getEmailRecipients(insight.targetType, insight.targetId);
       
       if (recipients.length === 0) {
-        console.log('📧 [INSIGHTS NOTIFICATIONS] No hay destinatarios para notificaciones por email');
+
         return;
       }
 
@@ -148,7 +148,7 @@ export class InsightsNotificationService {
       // Enviar email usando el servicio existente
       await strapi.plugins['email'].services.email.send(emailData);
       
-      console.log(`📧 [INSIGHTS NOTIFICATIONS] Email enviado a ${recipients.length} destinatarios`);
+
 
     } catch (error) {
       console.error('❌ [INSIGHTS NOTIFICATIONS] Error enviando email:', error);
@@ -192,7 +192,7 @@ export class InsightsNotificationService {
         throw new Error(`Webhook responded with status ${response.status}`);
       }
 
-      console.log('🔗 [INSIGHTS NOTIFICATIONS] Webhook enviado correctamente');
+
 
     } catch (error) {
       console.error('❌ [INSIGHTS NOTIFICATIONS] Error enviando webhook:', error);
@@ -214,7 +214,7 @@ export class InsightsNotificationService {
 
       // Por ahora, retornar todas las suscripciones activas
       // TODO: Implementar filtrado por target cuando las relaciones estén correctamente configuradas
-      console.log(`📱 [INSIGHTS NOTIFICATIONS] Encontradas ${subscriptions.length} suscripciones activas`);
+
       return subscriptions;
 
     } catch (error) {
@@ -241,7 +241,7 @@ export class InsightsNotificationService {
         .map(user => user.email)
         .filter(Boolean);
 
-      console.log(`📧 [INSIGHTS NOTIFICATIONS] Encontrados ${emails.length} destinatarios de email`);
+
       return emails;
 
     } catch (error) {

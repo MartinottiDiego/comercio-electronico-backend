@@ -706,9 +706,14 @@ export interface ApiInsightInsight extends Struct.CollectionTypeSchema {
         'marketing',
         'product',
         'trend',
-        'system',
-        'performance',
-        'security',
+        'growth',
+        'revenue',
+        'engagement',
+        'conversion',
+        'user_registration',
+        'store_activity',
+        'top_products',
+        'category_trends',
       ]
     > &
       Schema.Attribute.Required;
@@ -2267,6 +2272,7 @@ export interface PluginUsersPermissionsUser
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    deletedAt: Schema.Attribute.DateTime;
     email: Schema.Attribute.Email &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{

@@ -1,136 +1,115 @@
-/**
- * Admin Dashboard Controller
- */
-
-import { factories } from '@strapi/strapi';
-import { Context } from 'koa';
-
-export default factories.createCoreController('api::admin.admin', ({ strapi }) => ({
-  /**
-   * Obtiene las métricas principales del dashboard de admin
-   */
-  async getDashboardMetrics(ctx: Context) {
+export default {
+  async getDashboardMetrics(ctx) {
     try {
-      // Obtener métricas básicas
-      const totalUsers = await strapi.entityService.findMany('plugin::users-permissions.user', {
-        filters: { confirmed: true }
-      });
-
-      const activeStores = await strapi.entityService.findMany('api::store.store', {
-        filters: { verified: true }
-      });
-
-      const totalOrders = await strapi.entityService.findMany('api::order.order', {
-        filters: { orderStatus: { $in: ['delivered', 'processing', 'shipped'] } }
-      });
-
-      const completedOrders = await strapi.entityService.findMany('api::order.order', {
-        filters: { orderStatus: 'delivered' },
-        populate: ['order_items']
-      });
-
-      // Calcular ingresos totales
-      let totalRevenue = 0;
-      completedOrders.forEach((order: any) => {
-        if (order.order_items) {
-          order.order_items.forEach((item: any) => {
-            totalRevenue += item.price * item.quantity;
-          });
+      // Get total users
+      const totalUsers = await strapi.entityService.count('plugin::users-permissions.user');
+      
+      // Get active stores (users with role 'tienda')
+      const activeStores = await strapi.entityService.count('plugin::users-permissions.user', {
+        filters: {
+          role: {
+            name: 'tienda'
+          }
         }
       });
 
-      // Simular visitas mensuales (usuarios totales * factor)
-      const monthlyVisits = totalUsers.length * 25; // Factor de visitas por usuario
+      // Get total orders
+      const totalOrders = await strapi.entityService.count('api::order.order');
 
-      // Calcular tasa de conversión
-      const conversionRate = monthlyVisits > 0 ? Math.round((totalOrders.length / monthlyVisits) * 10000) / 100 : 0;
+      // Get total revenue (sum of all delivered orders)
+      const orders = await strapi.entityService.findMany('api::order.order', {
+        filters: {
+          orderStatus: 'delivered'
+        }
+      });
 
-      // Por ahora, usar valores simulados para los cambios
+      const totalRevenue = orders.reduce((sum, order) => {
+        return sum + (order.total || 0);
+      }, 0);
+
+      // Calculate conversion rate (mock data for now)
+      const conversionRate = 3.2;
+
+      // Calculate monthly visits based on user activity
+      const currentDate = new Date();
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      // Get users who have been active this month (created or updated)
+      const activeUsersThisMonth = await strapi.entityService.count('plugin::users-permissions.user', {
+        filters: {
+          $or: [
+            {
+              createdAt: {
+                $gte: startOfMonth.toISOString()
+              }
+            },
+            {
+              updatedAt: {
+                $gte: startOfMonth.toISOString()
+              }
+            }
+          ]
+        }
+      });
+
+      // Estimate monthly visits: active users * average sessions per user
+      // This is a rough estimation - in a real app you'd track actual sessions
+      const averageSessionsPerUser = 8; // Estimated based on typical e-commerce behavior
+      const monthlyVisits = activeUsersThisMonth * averageSessionsPerUser;
+
       const metrics = {
-        totalUsers: {
-          value: totalUsers.length,
-          change: 12.5,
-          changeType: 'positive' as const
-        },
-        activeStores: {
-          value: activeStores.length,
-          change: 8.2,
-          changeType: 'positive' as const
-        },
-        totalOrders: {
-          value: totalOrders.length,
-          change: 23.1,
-          changeType: 'positive' as const
-        },
-        totalRevenue: {
-          value: Math.round(totalRevenue * 100) / 100,
-          change: 15.3,
-          changeType: 'positive' as const
-        },
-        conversionRate: {
-          value: conversionRate,
-          change: 0.8,
-          changeType: 'positive' as const
-        },
-        monthlyVisits: {
-          value: monthlyVisits,
-          change: 18.7,
-          changeType: 'positive' as const
-        }
+        totalUsers,
+        activeStores,
+        totalOrders,
+        totalRevenue,
+        conversionRate,
+        monthlyVisits
       };
 
-      return ctx.send({
-        success: true,
-        data: metrics
-      });
-
+      return { data: metrics };
     } catch (error) {
-      return ctx.internalServerError('Error obteniendo métricas del dashboard');
+      console.error('Error fetching dashboard metrics:', error);
+      ctx.throw(500, 'Error al obtener métricas del dashboard');
     }
   },
 
-  /**
-   * Obtiene los datos de usuarios registrados por mes
-   */
-  async getUserRegistrationData(ctx: Context) {
+  async getUserRegistrationData(ctx) {
     try {
-      // Obtener todos los usuarios
+      // Get users registered in the last 12 months
+      const twelveMonthsAgo = new Date();
+      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
       const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
-        filters: { confirmed: true }
-      });
-
-      // Agrupar usuarios por mes de registro
-      const monthlyData: { [key: string]: number } = {};
-      
-      // Inicializar todos los meses con 0
-      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      months.forEach(month => {
-        monthlyData[month] = 0;
-      });
-
-      // Contar usuarios por mes
-      users.forEach((user: any) => {
-        if (user.createdAt) {
-          const date = new Date(user.createdAt);
-          const monthIndex = date.getMonth();
-          const monthName = months[monthIndex];
-          monthlyData[monthName]++;
+        filters: {
+          createdAt: {
+            $gte: twelveMonthsAgo.toISOString()
+          }
         }
       });
 
-      // Convertir a formato para el gráfico
-      const chartData = months.map(month => ({
-        mes: month,
-        usuarios: monthlyData[month]
-      }));
+      // Group by month
+      const monthlyData = users.reduce((acc, user) => {
+        const date = new Date(user.createdAt);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!acc[monthKey]) {
+          acc[monthKey] = 0;
+        }
+        acc[monthKey]++;
+        
+        return acc;
+      }, {} as Record<string, number>);
 
-      return ctx.send({
-        success: true,
-        data: chartData
-      });
+      // Convert to array format for chart
+      const chartData = Object.entries(monthlyData).map(([month, count]) => ({
+        month,
+        users: count
+      })).sort((a, b) => a.month.localeCompare(b.month));
 
+      return { data: chartData };
     } catch (error) {
-      return ctx.internalServerError('Error obteniendo datos de usuarios por mes');
+      console.error('Error fetching user registration data:', error);
+      ctx.throw(500, 'Error al obtener datos de registro de usuarios');
     }
   }
-}));
+};
