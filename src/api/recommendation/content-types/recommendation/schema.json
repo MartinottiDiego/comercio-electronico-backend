@@ -5,47 +5,43 @@
     "singularName": "recommendation",
     "pluralName": "recommendations",
     "displayName": "Recommendation",
-    "description": "Cache for product recommendations"
+    "description": "Personalized product recommendations cache"
   },
   "options": {
     "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
-    "userId": {
-      "type": "string",
-      "required": true
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "recommendations"
     },
-    "context": {
-      "type": "string",
-      "required": true
-    },
-    "productId": {
-      "type": "string"
-    },
-    "categoryId": {
-      "type": "string"
-    },
-    "recommendedProducts": {
+    "items": {
       "type": "json",
       "required": true
     },
-    "algorithm": {
+    "strategy": {
       "type": "enumeration",
       "enum": [
-        "collaborative",
-        "content_based",
-        "popularity",
+        "cooccurrence",
+        "content",
         "hybrid"
       ],
       "required": true
     },
-    "score": {
-      "type": "decimal"
+    "context": {
+      "type": "json",
+      "required": true
     },
-    "expiresAt": {
+    "generatedAt": {
       "type": "datetime",
       "required": true
+    },
+    "ttl": {
+      "type": "integer",
+      "default": 86400
     },
     "metadata": {
       "type": "json"

@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "activity_product_views",
+  "info": {
+    "singularName": "activity-product-view",
+    "pluralName": "activity-product-views",
+    "displayName": "Activity Product View",
+    "description": "Track product views and user interactions for recommendation engine"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "activityProductViews"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "activityProductViews"
+    },
+    "timestamp": {
+      "type": "datetime",
+      "required": true
+    },
+    "dwell": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "context": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+}

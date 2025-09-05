@@ -1,4 +1,5 @@
 import { insightsAutomationService } from './lib/services/insights-automation-service';
+import { RecommendationEngineService } from './api/recommendation/services/recommendation-engine.service';
 
 export default {
   /**
@@ -18,13 +19,26 @@ export default {
    */
   async bootstrap({ strapi }) {
 
-
     try {
       // Inicializar sistema de automatización de insights
       await insightsAutomationService.initialize(strapi);
 
     } catch (error) {
       console.error('❌ [BOOTSTRAP] Error inicializando automatización de insights:', error);
+    }
+
+    try {
+      // Inicializar motor de recomendaciones
+      const recommendationEngine = new RecommendationEngineService(strapi);
+      await recommendationEngine.initialize();
+      
+      // Hacer el servicio disponible globalmente
+      strapi.recommendationEngine = recommendationEngine;
+      
+      console.log('✅ [BOOTSTRAP] Motor de recomendaciones inicializado correctamente');
+
+    } catch (error) {
+      console.error('❌ [BOOTSTRAP] Error inicializando motor de recomendaciones:', error);
     }
 
     // Inicializar cron jobs para limpieza automática

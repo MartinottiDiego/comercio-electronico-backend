@@ -1,11 +1,41 @@
+/**
+ * Recommendation API Routes
+ */
+
 export default {
   routes: [
     {
+      method: 'POST',
+      path: '/recommendations/run',
+      handler: 'recommendation.run',
+      config: {
+        policies: [],
+        middlewares: []
+      }
+    },
+    {
+      method: 'GET',
+      path: '/recommendations/me',
+      handler: 'recommendation.getMyRecommendations',
+      config: {
+        policies: [],
+        middlewares: []
+      }
+    },
+    {
       method: 'GET',
       path: '/recommendations',
-      handler: 'index.getRecommendations',
+      handler: 'recommendation.find',
       config: {
-        auth: false,
+        policies: [],
+        middlewares: []
+      }
+    },
+    {
+      method: 'POST',
+      path: '/recommendations/feedback',
+      handler: 'recommendation.feedback',
+      config: {
         policies: [],
         middlewares: []
       }
@@ -13,72 +43,20 @@ export default {
     {
       method: 'POST',
       path: '/recommendations/track',
-      handler: 'index.trackBehavior',
+      handler: 'recommendation.track',
       config: {
-        auth: false,
         policies: [],
         middlewares: []
       }
     },
     {
-      method: 'GET',
-      path: '/recommendations/cart',
-      handler: 'index.getCartRecommendations',
+      method: 'POST',
+      path: '/recommendations/generate-basic',
+      handler: 'recommendation.generateBasic',
       config: {
-        auth: false,
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
-      method: 'GET',
-      path: '/recommendations/product',
-      handler: 'index.getProductRecommendations',
-      config: {
-        auth: false,
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
-      method: 'GET',
-      path: '/recommendations/category',
-      handler: 'index.getCategoryRecommendations',
-      config: {
-        auth: false,
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
-      method: 'GET',
-      path: '/recommendations/home',
-      handler: 'index.getHomeRecommendations',
-      config: {
-        auth: false,
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
-      method: 'GET',
-      path: '/recommendations/checkout',
-      handler: 'index.getCheckoutRecommendations',
-      config: {
-        auth: false,
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
-      method: 'DELETE',
-      path: '/recommendations/cache',
-      handler: 'index.clearCache',
-      config: {
-        auth: false,
         policies: [],
         middlewares: []
       }
     }
   ]
-}; 
+};

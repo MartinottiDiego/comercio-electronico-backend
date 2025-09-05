@@ -133,6 +133,18 @@
     "deletedAt": {
       "type": "datetime",
       "required": false
+    },
+    "activityProductViews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::activity-product-view.activity-product-view",
+      "mappedBy": "user"
+    },
+    "recommendations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::recommendation.recommendation",
+      "mappedBy": "user"
     }
   }
 }

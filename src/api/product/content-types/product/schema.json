@@ -110,6 +110,12 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::product-variant.product-variant"
+    },
+    "activityProductViews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::activity-product-view.activity-product-view",
+      "mappedBy": "product"
     }
   }
 }

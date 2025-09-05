@@ -373,6 +373,52 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiActivityProductViewActivityProductView
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'activity_product_views';
+  info: {
+    description: 'Track product views and user interactions for recommendation engine';
+    displayName: 'Activity Product View';
+    pluralName: 'activity-product-views';
+    singularName: 'activity-product-view';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    context: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dwell: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::activity-product-view.activity-product-view'
+    > &
+      Schema.Attribute.Private;
+    metadata: Schema.Attribute.JSON;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    sessionId: Schema.Attribute.String;
+    timestamp: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiAddressAddress extends Struct.CollectionTypeSchema {
   collectionName: 'addresses';
   info: {
@@ -1236,6 +1282,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    activityProductViews: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::activity-product-view.activity-product-view'
+    >;
     brand: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 100;
@@ -1445,7 +1495,7 @@ export interface ApiRecommendationRecommendation
   extends Struct.CollectionTypeSchema {
   collectionName: 'recommendations';
   info: {
-    description: 'Cache for product recommendations';
+    description: 'Personalized product recommendations cache';
     displayName: 'Recommendation';
     pluralName: 'recommendations';
     singularName: 'recommendation';
@@ -1454,16 +1504,12 @@ export interface ApiRecommendationRecommendation
     draftAndPublish: false;
   };
   attributes: {
-    algorithm: Schema.Attribute.Enumeration<
-      ['collaborative', 'content_based', 'popularity', 'hybrid']
-    > &
-      Schema.Attribute.Required;
-    categoryId: Schema.Attribute.String;
-    context: Schema.Attribute.String & Schema.Attribute.Required;
+    context: Schema.Attribute.JSON & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    expiresAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    generatedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    items: Schema.Attribute.JSON & Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1471,14 +1517,19 @@ export interface ApiRecommendationRecommendation
     > &
       Schema.Attribute.Private;
     metadata: Schema.Attribute.JSON;
-    productId: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
-    recommendedProducts: Schema.Attribute.JSON & Schema.Attribute.Required;
-    score: Schema.Attribute.Decimal;
+    strategy: Schema.Attribute.Enumeration<
+      ['cooccurrence', 'content', 'hybrid']
+    > &
+      Schema.Attribute.Required;
+    ttl: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<86400>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    userId: Schema.Attribute.String & Schema.Attribute.Required;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
   };
 }
 
@@ -2264,6 +2315,10 @@ export interface PluginUsersPermissionsUser
     draftAndPublish: false;
   };
   attributes: {
+    activityProductViews: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::activity-product-view.activity-product-view'
+    >;
     addresses: Schema.Attribute.Relation<'oneToMany', 'api::address.address'>;
     authProvider: Schema.Attribute.String & Schema.Attribute.DefaultTo<'local'>;
     blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
@@ -2303,6 +2358,10 @@ export interface PluginUsersPermissionsUser
       'oneToMany',
       'api::push-subscription.push-subscription'
     >;
+    recommendations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::recommendation.recommendation'
+    >;
     refunds: Schema.Attribute.Relation<'oneToMany', 'api::refund.refund'>;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;
     reviews: Schema.Attribute.Relation<'oneToMany', 'api::review.review'>;
@@ -2333,6 +2392,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::activity-product-view.activity-product-view': ApiActivityProductViewActivityProductView;
       'api::address.address': ApiAddressAddress;
       'api::admin.admin': ApiAdminAdmin;
       'api::auth.auth': ApiAuthAuth;
