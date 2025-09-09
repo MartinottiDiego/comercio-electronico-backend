@@ -48,7 +48,17 @@ export default factories.createCoreService('api::notification.notification', ({ 
     try {
       const { EmailService } = require('../../../lib/email-service');
       const emailService = EmailService.getInstance();
-      const emailSent = await emailService.sendNotificationEmail(notification);
+      
+      let emailSent = false;
+      
+      // Si es una notificación de tienda, usar template específico
+      if (notification.type === 'store_rejection') {
+        emailSent = await this.sendStoreRejectionEmail(notification);
+      } else if (notification.type === 'store_approval') {
+        emailSent = await this.sendStoreApprovalEmail(notification);
+      } else {
+        emailSent = await emailService.sendNotificationEmail(notification);
+      }
       
       if (emailSent) {
         await strapi.entityService.update('api::notification.notification', notification.id, {
@@ -60,6 +70,88 @@ export default factories.createCoreService('api::notification.notification', ({ 
       return emailSent;
     } catch (error) {
       console.error('❌ Error en sendEmailNotification:', error);
+      return false;
+    }
+  },
+
+  async sendStoreRejectionEmail(notification) {
+    try {
+      const { generateStoreRejectionEmail } = require('../../../lib/email-templates/store-rejection');
+      
+      // Extraer información de la tienda del mensaje
+      const message = notification.message;
+      const storeNameMatch = message.match(/Tu tienda "([^"]+)"/);
+      const reasonMatch = message.match(/Motivo: (.+)$/);
+      
+      const storeName = storeNameMatch ? storeNameMatch[1] : 'tu tienda';
+      const rejectionReason = reasonMatch ? reasonMatch[1] : 'No especificado';
+      
+      // Obtener nombre del propietario
+      const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { email: notification.recipientEmail },
+        populate: ['profile']
+      });
+      
+      const ownerName = user?.profile?.firstName 
+        ? `${user.profile.firstName} ${user.profile.lastName || ''}`.trim()
+        : user?.username || 'Usuario';
+      
+      // Generar HTML del email
+      const htmlContent = generateStoreRejectionEmail(storeName, ownerName, rejectionReason);
+      
+      // Enviar email usando el servicio de email
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+      
+      return await emailService.sendEmail({
+        to: notification.recipientEmail,
+        subject: notification.title,
+        html: htmlContent,
+        text: `Tu tienda "${storeName}" ha sido rechazada. Motivo: ${rejectionReason}`
+      });
+      
+    } catch (error) {
+      console.error('❌ Error enviando email de rechazo de tienda:', error);
+      return false;
+    }
+  },
+
+  async sendStoreApprovalEmail(notification) {
+    try {
+      const { generateStoreApprovalEmail } = require('../../../lib/email-templates/store-approval');
+      
+      // Extraer información de la tienda del mensaje
+      const message = notification.message;
+      const storeNameMatch = message.match(/Tu tienda "([^"]+)"/);
+      
+      const storeName = storeNameMatch ? storeNameMatch[1] : 'tu tienda';
+      
+      // Obtener nombre del propietario
+      const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { email: notification.recipientEmail },
+        populate: ['profile']
+      });
+      
+      const ownerName = user?.profile?.firstName 
+        ? `${user.profile.firstName} ${user.profile.lastName || ''}`.trim()
+        : user?.username || 'Usuario';
+      
+      // Generar HTML del email
+      const htmlContent = generateStoreApprovalEmail(storeName, ownerName);
+      
+      // Enviar email usando el servicio de email
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+      
+      return await emailService.sendEmail({
+        to: notification.recipientEmail,
+        subject: notification.title,
+        html: htmlContent,
+        text: `¡Felicitaciones! Tu tienda "${storeName}" ha sido aprobada y ya está activa en WaaZaar.`
+      });
+      
+    } catch (error) {
+      console.error('❌ Error enviando email de aprobación de tienda:', error);
       return false;
     }
   },

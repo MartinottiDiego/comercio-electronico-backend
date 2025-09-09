@@ -894,6 +894,9 @@ export interface ApiNotificationNotification
         'security',
         'stock_alert',
         'new_sale',
+        'store_rejection',
+        'store_approval',
+        'store_blocked',
       ]
     > &
       Schema.Attribute.Required;

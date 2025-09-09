@@ -379,16 +379,98 @@ Sistema de notificaciones automáticas
   }
 
   /**
+   * Método para enviar emails personalizados con HTML/texto
+   */
+  async sendCustomEmail(options: {
+    to: string;
+    subject: string;
+    html?: string;
+    text?: string;
+  }): Promise<boolean> {
+    try {
+      const { to, subject, html, text } = options;
+      
+      const emailData: EmailData = {
+        to,
+        subject,
+        html: html || text || '',
+        text: text || this.stripHtml(html || '')
+      };
+
+      // Añadir información del remitente
+      const fromEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@waazaar.com';
+      const fromName = 'WaaZaar';
+
+      const mailOptions = {
+        from: `"${fromName}" <${fromEmail}>`,
+        to: emailData.to,
+        subject: emailData.subject,
+        html: emailData.html,
+        text: emailData.text,
+        replyTo: fromEmail,
+      };
+
+      if (this.useResend) {
+        // Usar Resend
+        const { Resend } = require('resend');
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        
+        const { data, error } = await resend.emails.send({
+          from: `"${fromName}" <${fromEmail}>`,
+          to: [emailData.to],
+          subject: emailData.subject,
+          html: emailData.html,
+        });
+
+        if (error) {
+          console.error('❌ Error enviando email con Resend:', error);
+          return false;
+        }
+
+        console.log('✅ Email enviado exitosamente con Resend:', data?.id);
+        return true;
+      } else {
+        // Usar SMTP tradicional
+        const info = await this.transporter.sendMail(mailOptions);
+        console.log('✅ Email enviado exitosamente:', info.messageId);
+        return true;
+      }
+    } catch (error) {
+      console.error('❌ Error enviando email personalizado:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Método auxiliar para convertir HTML a texto plano
+   */
+  private stripHtml(html: string): string {
+    return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
    * Método principal para enviar emails de reembolso
    */
   async sendEmail(options: {
     to: string;
     subject: string;
-    template: string;
-    data: any;
+    html?: string;
+    text?: string;
+    template?: string;
+    data?: any;
   }): Promise<boolean> {
     try {
-      const { to, subject, template, data } = options;
+      const { to, subject, html, text, template, data } = options;
+      
+      // Si se proporciona HTML o texto directamente, enviar email personalizado
+      if (html || text) {
+        return await this.sendCustomEmail({ to, subject, html, text });
+      }
+      
+      // Si no, usar el sistema de templates existente
+      if (!template) {
+        throw new Error('Debe proporcionar template o html/text');
+      }
       
       switch (template) {
         case 'refund-request-created':
