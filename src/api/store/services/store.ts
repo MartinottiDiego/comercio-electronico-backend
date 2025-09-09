@@ -63,6 +63,12 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
           verified: {
             $eq: true, // Solo stores verificados
           },
+          storeStatus: {
+            $eq: 'approved', // Solo stores aprobados
+          },
+          blocked: {
+            $eq: false, // Solo stores no bloqueados
+          },
         },
         orderBy: {
           rating: 'desc', // Ordenar por rating descendente
@@ -102,6 +108,8 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
           description: store.description,
           rating: store.rating,
           verified: store.verified,
+          blocked: store.blocked,
+          storeStatus: store.storeStatus,
           specialty: store.specialty,
           location: store.location,
           image: store.image,
