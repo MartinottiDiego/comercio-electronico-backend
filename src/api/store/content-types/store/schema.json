@@ -63,6 +63,14 @@
       ],
       "default": "pending"
     },
+    "blocked": {
+      "type": "boolean",
+      "default": false
+    },
+    "rejectionReason": {
+      "type": "text",
+      "maxLength": 1000
+    },
     "rating": {
       "type": "decimal",
       "default": 0,

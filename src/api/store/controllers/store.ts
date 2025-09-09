@@ -90,15 +90,44 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         return ctx.unauthorized('Usuario bloqueado o no confirmado');
       }
 
+      // Obtener información de la tienda y su propietario
+      const store = await strapi.db.query('api::store.store').findOne({
+        where: { documentId: id },
+        populate: ['owner']
+      });
+
+      if (!store || !store.owner) {
+        return ctx.notFound('Tienda o propietario no encontrado');
+      }
+
       // Actualizar tienda con estado aprobado
       const updatedStore = await strapi.db.query('api::store.store').update({
         where: { documentId: id },
         data: {
           storeStatus: StoreStatus.APPROVED,
           verified: STORE_STATUS_CONFIG[StoreStatus.APPROVED].verified,
-          blocked: STORE_STATUS_CONFIG[StoreStatus.APPROVED].blocked,
+          active: true,
+          rejectionReason: null, // Limpiar el motivo de rechazo
         },
       });
+
+      // Enviar notificación al propietario de la tienda
+      try {
+        const notificationService = strapi.service('api::notification.notification');
+        await notificationService.createNotification({
+          type: 'store_approval',
+          title: '¡Tu tienda ha sido aprobada!',
+          message: `¡Felicitaciones! Tu tienda "${store.name}" ha sido aprobada y ya está activa en WaaZaar.`,
+          priority: 'high',
+          recipientEmail: store.owner.email,
+          recipientRole: 'tienda',
+          actionUrl: '/dashboard/tienda',
+          actionText: 'Ver mi tienda'
+        });
+      } catch (notificationError) {
+        console.error('Error enviando notificación de aprobación:', notificationError);
+        // No fallar la operación si la notificación falla
+      }
 
       return {
         data: {
@@ -108,6 +137,8 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             storeStatus: updatedStore.storeStatus,
             verified: updatedStore.verified,
             blocked: updatedStore.blocked,
+            active: updatedStore.active,
+            rejectionReason: updatedStore.rejectionReason,
           }
         }
       };
@@ -150,15 +181,47 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         return ctx.unauthorized('Usuario bloqueado o no confirmado');
       }
 
+      // Obtener motivo de rechazo del body
+      const { rejectionReason } = ctx.request.body || {};
+
+      // Obtener información de la tienda y su propietario
+      const store = await strapi.db.query('api::store.store').findOne({
+        where: { documentId: id },
+        populate: ['owner']
+      });
+
+      if (!store || !store.owner) {
+        return ctx.notFound('Tienda o propietario no encontrado');
+      }
+
       // Actualizar tienda con estado rechazado
       const updatedStore = await strapi.db.query('api::store.store').update({
         where: { documentId: id },
         data: {
           storeStatus: StoreStatus.REJECTED,
           verified: STORE_STATUS_CONFIG[StoreStatus.REJECTED].verified,
-          blocked: STORE_STATUS_CONFIG[StoreStatus.REJECTED].blocked,
+          active: false,
+          rejectionReason: rejectionReason || null,
         },
       });
+
+      // Enviar notificación al propietario de la tienda
+      try {
+        const notificationService = strapi.service('api::notification.notification');
+        await notificationService.createNotification({
+          type: 'store_rejection',
+          title: 'Tu tienda ha sido rechazada',
+          message: `Tu tienda "${store.name}" ha sido rechazada. Motivo: ${rejectionReason || 'No especificado'}`,
+          priority: 'high',
+          recipientEmail: store.owner.email,
+          recipientRole: 'tienda',
+          actionUrl: '/dashboard/tienda',
+          actionText: 'Ver detalles'
+        });
+      } catch (notificationError) {
+        console.error('Error enviando notificación de rechazo:', notificationError);
+        // No fallar la operación si la notificación falla
+      }
 
       return {
         data: {
@@ -168,6 +231,8 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             storeStatus: updatedStore.storeStatus,
             verified: updatedStore.verified,
             blocked: updatedStore.blocked,
+            active: updatedStore.active,
+            rejectionReason: updatedStore.rejectionReason,
           }
         }
       };
@@ -217,6 +282,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
           storeStatus: StoreStatus.BLOCKED,
           verified: STORE_STATUS_CONFIG[StoreStatus.BLOCKED].verified,
           blocked: STORE_STATUS_CONFIG[StoreStatus.BLOCKED].blocked,
+          active: false,
         },
       });
 
@@ -228,6 +294,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             storeStatus: updatedStore.storeStatus,
             verified: updatedStore.verified,
             blocked: updatedStore.blocked,
+            active: updatedStore.active,
           }
         }
       };
