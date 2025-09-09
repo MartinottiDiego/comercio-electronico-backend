@@ -193,7 +193,6 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       if (!store || !store.owner) {
         return ctx.notFound('Tienda o propietario no encontrado');
       }
-
       // Actualizar tienda con estado rechazado
       const updatedStore = await strapi.db.query('api::store.store').update({
         where: { documentId: id },
