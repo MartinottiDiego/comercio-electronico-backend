@@ -49,6 +49,28 @@
       "type": "boolean",
       "default": false
     },
+    "active": {
+      "type": "boolean",
+      "default": false
+    },
+    "storeStatus": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved", 
+        "rejected",
+        "blocked"
+      ],
+      "default": "pending"
+    },
+    "blocked": {
+      "type": "boolean",
+      "default": false
+    },
+    "rejectionReason": {
+      "type": "text",
+      "maxLength": 1000
+    },
     "rating": {
       "type": "decimal",
       "default": 0,

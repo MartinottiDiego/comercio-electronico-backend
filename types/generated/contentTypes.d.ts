@@ -894,6 +894,9 @@ export interface ApiNotificationNotification
         'security',
         'stock_alert',
         'new_sale',
+        'store_rejection',
+        'store_approval',
+        'store_blocked',
       ]
     > &
       Schema.Attribute.Required;
@@ -1764,6 +1767,8 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1799,11 +1804,19 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
         number
       > &
       Schema.Attribute.DefaultTo<0>;
+    rejectionReason: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 1000;
+      }>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     specialty: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 100;
       }>;
+    storeStatus: Schema.Attribute.Enumeration<
+      ['pending', 'approved', 'rejected', 'blocked']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

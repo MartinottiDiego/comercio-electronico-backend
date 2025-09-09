@@ -30,7 +30,10 @@
         "system",
         "security",
         "stock_alert",
-        "new_sale"
+        "new_sale",
+        "store_rejection",
+        "store_approval",
+        "store_blocked"
       ]
     },
     "title": {
