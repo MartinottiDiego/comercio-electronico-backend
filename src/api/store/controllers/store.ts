@@ -96,7 +96,8 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         data: {
           storeStatus: StoreStatus.APPROVED,
           verified: STORE_STATUS_CONFIG[StoreStatus.APPROVED].verified,
-          blocked: STORE_STATUS_CONFIG[StoreStatus.APPROVED].blocked,
+          active: true,
+          rejectionReason: null, // Limpiar el motivo de rechazo
         },
       });
 
@@ -108,6 +109,8 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             storeStatus: updatedStore.storeStatus,
             verified: updatedStore.verified,
             blocked: updatedStore.blocked,
+            active: updatedStore.active,
+            rejectionReason: updatedStore.rejectionReason,
           }
         }
       };
@@ -150,13 +153,17 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         return ctx.unauthorized('Usuario bloqueado o no confirmado');
       }
 
+      // Obtener motivo de rechazo del body
+      const { rejectionReason } = ctx.request.body || {};
+
       // Actualizar tienda con estado rechazado
       const updatedStore = await strapi.db.query('api::store.store').update({
         where: { documentId: id },
         data: {
           storeStatus: StoreStatus.REJECTED,
           verified: STORE_STATUS_CONFIG[StoreStatus.REJECTED].verified,
-          blocked: STORE_STATUS_CONFIG[StoreStatus.REJECTED].blocked,
+          active: false,
+          rejectionReason: rejectionReason || null,
         },
       });
 
@@ -168,6 +175,8 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             storeStatus: updatedStore.storeStatus,
             verified: updatedStore.verified,
             blocked: updatedStore.blocked,
+            active: updatedStore.active,
+            rejectionReason: updatedStore.rejectionReason,
           }
         }
       };
@@ -217,6 +226,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
           storeStatus: StoreStatus.BLOCKED,
           verified: STORE_STATUS_CONFIG[StoreStatus.BLOCKED].verified,
           blocked: STORE_STATUS_CONFIG[StoreStatus.BLOCKED].blocked,
+          active: false,
         },
       });
 
@@ -228,6 +238,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             storeStatus: updatedStore.storeStatus,
             verified: updatedStore.verified,
             blocked: updatedStore.blocked,
+            active: updatedStore.active,
           }
         }
       };
