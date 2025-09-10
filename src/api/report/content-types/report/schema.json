@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reports",
+  "info": {
+    "singularName": "report",
+    "pluralName": "reports",
+    "displayName": "Report"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "usuarios",
+        "ventas",
+        "productos",
+        "tiendas",
+        "metricas"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "text",
+      "maxLength": 1000
+    },
+    "dateFrom": {
+      "type": "date",
+      "required": true
+    },
+    "dateTo": {
+      "type": "date",
+      "required": true
+    },
+    "reportStatus": {
+      "type": "enumeration",
+      "required": true,
+      "default": "generating",
+      "enum": [
+        "generating",
+        "completed",
+        "failed"
+      ]
+    },
+    "data": {
+      "type": "json"
+    },
+    "fileUrl": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "metadata": {
+      "type": "json"
+    },
+    "generatedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

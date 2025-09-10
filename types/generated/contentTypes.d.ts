@@ -1612,6 +1612,63 @@ export interface ApiRefundRefund extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiReportReport extends Struct.CollectionTypeSchema {
+  collectionName: 'reports';
+  info: {
+    displayName: 'Report';
+    pluralName: 'reports';
+    singularName: 'report';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    data: Schema.Attribute.JSON;
+    dateFrom: Schema.Attribute.Date & Schema.Attribute.Required;
+    dateTo: Schema.Attribute.Date & Schema.Attribute.Required;
+    description: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 1000;
+      }>;
+    fileUrl: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 500;
+      }>;
+    generatedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::report.report'
+    > &
+      Schema.Attribute.Private;
+    metadata: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    reportStatus: Schema.Attribute.Enumeration<
+      ['generating', 'completed', 'failed']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'generating'>;
+    title: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    type: Schema.Attribute.Enumeration<
+      ['usuarios', 'ventas', 'productos', 'tiendas', 'metricas']
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiReviewReview extends Struct.CollectionTypeSchema {
   collectionName: 'reviews';
   info: {
@@ -2425,6 +2482,7 @@ declare module '@strapi/strapi' {
       'api::push-subscription.push-subscription': ApiPushSubscriptionPushSubscription;
       'api::recommendation.recommendation': ApiRecommendationRecommendation;
       'api::refund.refund': ApiRefundRefund;
+      'api::report.report': ApiReportReport;
       'api::review.review': ApiReviewReview;
       'api::stock-reservation.stock-reservation': ApiStockReservationStockReservation;
       'api::store.store': ApiStoreStore;
