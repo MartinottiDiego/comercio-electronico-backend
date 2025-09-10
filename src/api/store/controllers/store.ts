@@ -17,38 +17,26 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   async getTopRated(ctx) {
     try {
       console.log('[StoresSlider] Controller getTopRated iniciado');
-      console.log('[StoresSlider] Query params:', ctx.query);
       
-      const { limit = '8', populate = 'image,products' } = ctx.query;
-      
-      // Validar límite
-      const validatedLimit = Math.min(Math.max(parseInt(limit as string) || 8, 1), 20);
-      console.log('[StoresSlider] Límite validado:', validatedLimit);
-      
-      // Obtener stores top-rated
-      const stores = await strapi.service('api::store.store').getTopRated({
-        limit: validatedLimit,
-        populate: populate as string,
+      // Obtener todas las stores primero para probar
+      const allStores = await strapi.entityService.findMany('api::store.store', {
+        populate: ['image'],
+        limit: 8,
       });
 
-      console.log('[StoresSlider] Stores obtenidos del service:', stores.length);
+      console.log('[StoresSlider] Stores obtenidas:', allStores.length);
 
       const response = {
-        data: stores,
+        data: allStores,
         meta: {
           pagination: {
             page: 1,
-            pageSize: validatedLimit,
+            pageSize: 8,
             pageCount: 1,
-            total: stores.length,
+            total: allStores.length,
           },
         },
       };
-
-      console.log('[StoresSlider] Respuesta final:', {
-        totalStores: stores.length,
-        meta: response.meta
-      });
 
       return response;
     } catch (error) {

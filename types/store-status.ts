@@ -58,3 +58,4 @@ export const STORE_STATUS_CONFIG: Record<StoreStatus, StoreStatusConfig> = {
     blocked: true
   }
 };
+

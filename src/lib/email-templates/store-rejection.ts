@@ -244,3 +244,4 @@ export function generateStoreRejectionEmail(storeName: string, ownerName: string
 </html>
   `;
 }
+
