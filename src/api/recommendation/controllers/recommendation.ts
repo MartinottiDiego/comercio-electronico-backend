@@ -405,37 +405,40 @@ export default ({ strapi }: { strapi: any }) => ({
         return null;
       }
 
-      // Debug: Log product data
-      strapi.log.info('🔍 Products found:', products.length);
-      if (products.length > 0) {
-        strapi.log.info('🔍 First product data:', {
-          id: products[0].id,
-          title: products[0].title,
-          thumbnail: products[0].thumbnail,
-          Media: products[0].Media,
-          thumbnailUrl: products[0].thumbnail?.url,
-          mediaUrl: products[0].Media?.url
-        });
-      }
 
       // Crear recomendaciones básicas
       const recommendations = products.map((product, index) => {
         const imageUrl = product.thumbnail?.url || product.Media?.url || null;
-        strapi.log.info(`🔍 Product ${product.id} image:`, { thumbnail: product.thumbnail, Media: product.Media, finalUrl: imageUrl });
         
-        return {
+        const recommendation = {
           product: {
             id: product.id,
             title: product.title,
             price: product.price,
             rating: product.rating,
-            image: imageUrl,
-            categories: product.categories?.map(cat => cat.name) || []
+            slug: product.slug || `producto-${product.id}`,
+            description: product.description || '',
+            image: imageUrl, // Campo singular para compatibilidad
+            images: imageUrl ? [{
+              id: product.thumbnail?.id || product.Media?.id || 1,
+              url: imageUrl,
+              alternativeText: product.thumbnail?.alternativeText || product.Media?.alternativeText || product.title || 'Producto'
+            }] : [],
+            category: product.categories && product.categories.length > 0 ? {
+              id: product.categories[0].id,
+              name: product.categories[0].name
+            } : null,
+            store: product.store ? {
+              id: product.store.id,
+              name: product.store.name
+            } : null
           },
           score: 0.8 - (index * 0.05), // Score decreciente
           rationale: `Producto popular con rating ${product.rating}/5`,
           algorithm: 'basic_popularity'
         };
+        
+        return recommendation;
       });
 
       // Guardar en la base de datos
