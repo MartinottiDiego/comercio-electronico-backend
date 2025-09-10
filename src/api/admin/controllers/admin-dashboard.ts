@@ -100,11 +100,21 @@ export default {
         return acc;
       }, {} as Record<string, number>);
 
-      // Convert to array format for chart
-      const chartData = Object.entries(monthlyData).map(([month, count]) => ({
-        month,
-        users: count
-      })).sort((a, b) => a.month.localeCompare(b.month));
+      // Convert to array format for chart with Spanish month names
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      
+      const chartData = Object.entries(monthlyData).map(([month, count]) => {
+        const date = new Date(month + '-01');
+        const monthIndex = date.getMonth();
+        return {
+          mes: monthNames[monthIndex],
+          usuarios: count
+        };
+      }).sort((a, b) => {
+        // Sort by month order (Ene, Feb, Mar, etc.)
+        const monthOrder = monthNames.indexOf(a.mes) - monthNames.indexOf(b.mes);
+        return monthOrder;
+      });
 
       return { data: chartData };
     } catch (error) {
