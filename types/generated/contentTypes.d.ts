@@ -1162,6 +1162,7 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'pending'>;
     publishedAt: Schema.Attribute.DateTime;
+    receiptUrl: Schema.Attribute.String;
     refunds: Schema.Attribute.Relation<'oneToMany', 'api::refund.refund'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &

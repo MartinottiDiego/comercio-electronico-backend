@@ -91,18 +91,20 @@ export default {
     };
   },
 
-  async createPaymentRecord(orderId: number, session: any, userId: string | null) {
+  async createPaymentRecord(orderId: number, session: any, userId: string | null, receiptUrl?: string) {
     try {
+
       // Usar el servicio unificado para crear el payment
       const payment = await strapi.service('api::payment.payment').createPaymentWithStripeData(
         session,
         orderId,
-        userId
+        userId,
+        receiptUrl
       );
       
       return payment;
     } catch (error) {
-      console.error('❌ Error creating payment record:', error);
+      console.error('❌ [WEBHOOK] Error creating payment record:', error);
       return null;
     }
   },
@@ -120,6 +122,37 @@ export default {
   // Funciones auxiliares para manejar eventos de webhook
   async handleCheckoutSessionCompleted(session: any) {
     try {
+
+      // Intentar obtener el receipt_url desde la API de Stripe usando la documentación oficial
+      let receiptUrl = session.receipt_url || session.payment_intent?.receipt_url;
+      
+      if (!receiptUrl && session.payment_intent) {
+        try {
+          const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+          
+          // Según la documentación: usar paymentIntent.latest_charge
+          if ((paymentIntent as any).latest_charge) {
+            const charge = await stripe.charges.retrieve((paymentIntent as any).latest_charge);
+            receiptUrl = charge.receipt_url;
+          } else {
+            // Fallback: intentar con charges.data si existe
+            if ((paymentIntent as any).charges && (paymentIntent as any).charges.data && (paymentIntent as any).charges.data.length > 0) {
+              const charge = (paymentIntent as any).charges.data[0];
+              receiptUrl = charge.receipt_url;
+            }
+          }
+          
+          // Si aún no hay receipt_url, usar la URL del dashboard como fallback
+          if (!receiptUrl) {
+            receiptUrl = `https://dashboard.stripe.com/test/payments/${session.payment_intent}`;
+          }
+        } catch (error) {
+          console.error('Error fetching receipt URL from Stripe API:', error);
+          // Como último recurso, crear una URL de recibo personalizada
+          receiptUrl = `https://dashboard.stripe.com/test/payments/${session.payment_intent}`;
+        }
+      }
+
       // 1. Validar datos de la sesión
       const sessionValidation = this.validateSessionData(session);
       if (!sessionValidation.isValid) {
@@ -292,22 +325,16 @@ export default {
         }
       }
       
-      // 11. Crear registro de pago
-      const payment = await strapi.entityService.create('api::payment.payment', {
-        data: {
-          paymentIntentId: session.payment_intent,
-          amount: session.amount_total / 100, // Convertir de centavos
-          currency: session.currency,
-          order: order.id,
-          date: new Date(),
-          paymentStatus: 'completed',
-          method: 'stripe',
-          metadata: {
-            sessionId: session.id,
-            customerEmail: session.customer_details?.email
-          }
-        }
-      });
+      // 11. Crear registro de pago usando el servicio unificado
+      
+      const payment = await this.createPaymentRecord(order.id, session, userId, receiptUrl);
+      
+      if (!payment) {
+        console.error('❌ [WEBHOOK] Failed to create payment record');
+        throw new Error('Failed to create payment record');
+      }
+      
+      console.log('✅ [WEBHOOK] Payment record created successfully:', payment.id);
 
       // Actualizar estado de la orden
       await strapi.entityService.update('api::order.order', order.id, {
