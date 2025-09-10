@@ -47,10 +47,6 @@ export default factories.createCoreService('api::report.report', ({ strapi }) =>
       }
 
       // Logs para debuggear
-      console.log('🔍 Servicio - userId recibido:', userId);
-      console.log('🔍 Servicio - tipo de userId:', typeof userId);
-      console.log('🔍 Servicio - Fechas recibidas:', { dateFrom, dateTo });
-      console.log('🔍 Servicio - Fechas procesadas:', { startDate, endDate, today });
 
       // Crear el informe en estado "generating"
       const report = await strapi.entityService.create('api::report.report', {
@@ -69,15 +65,11 @@ export default factories.createCoreService('api::report.report', ({ strapi }) =>
         }
       });
 
-      console.log('🔍 Servicio - Report creado:', report);
-      console.log('🔍 Servicio - Report ID:', report.id);
 
       // Verificar que el reporte se creó correctamente con el generatedBy
       const createdReport = await strapi.entityService.findOne('api::report.report', report.id, {
         populate: ['generatedBy']
       });
-      console.log('🔍 Servicio - Report con generatedBy:', createdReport);
-      console.log('🔍 Servicio - GeneratedBy ID:', (createdReport as any)?.generatedBy?.id);
 
       // Generar los datos del informe de forma asíncrona
       this.generateReportData(Number(report.id), type, startDate, endDate);
@@ -277,18 +269,6 @@ export default factories.createCoreService('api::report.report', ({ strapi }) =>
       populate: ['order_items', 'order_items.product']
     });
 
-    console.log('🔍 generateSalesReportData - Total de órdenes en BD:', allOrders.length);
-    console.log('🔍 generateSalesReportData - Fechas de búsqueda:', {
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString()
-    });
-    
-    if (allOrders.length > 0) {
-      console.log('🔍 generateSalesReportData - Fechas de órdenes existentes:');
-      allOrders.forEach((order, index) => {
-        console.log(`  Orden ${index + 1}: ${order.createdAt} - Total: ${order.total}`);
-      });
-    }
 
     // Obtener todas las órdenes en el rango de fechas (admin puede ver todas)
     const orders = await strapi.entityService.findMany('api::order.order', {
@@ -301,9 +281,6 @@ export default factories.createCoreService('api::report.report', ({ strapi }) =>
       populate: ['order_items', 'order_items.product']
     });
 
-    console.log('🔍 generateSalesReportData - Órdenes encontradas en rango:', orders.length);
-
-    console.log('🔍 generateSalesReportData - Órdenes encontradas:', orders.length);
 
     // Calcular total de ventas
     const totalSales = orders.reduce((sum, order) => sum + (order.total || 0), 0);

@@ -14,13 +14,9 @@ export default factories.createCoreController('api::report.report', ({ strapi })
       const { user } = ctx.state;
 
       // Logs para debuggear
-      console.log('🔍 Usuario en ctx.state:', user);
-      console.log('🔍 User ID:', user?.id);
-      console.log('🔍 Headers de autorización:', ctx.request.headers.authorization);
       
       // Usar el usuario autenticado
       const userId = user.id;
-      console.log('🔍 UserId final que se usará:', userId);
 
       // Validar campos requeridos
       if (!type || !dateFrom || !dateTo) {
@@ -62,8 +58,6 @@ export default factories.createCoreController('api::report.report', ({ strapi })
       const page = parseInt(ctx.query.page as string) || 1;
       const pageSize = parseInt(ctx.query.pageSize as string) || 10;
 
-      console.log('🔍 find - Usuario autenticado:', user);
-      console.log('🔍 find - User ID:', user.id);
 
       // El admin puede ver todos los informes, no solo los suyos
       const reports = await strapi.entityService.findMany('api::report.report', {
@@ -73,12 +67,8 @@ export default factories.createCoreController('api::report.report', ({ strapi })
         populate: ['generatedBy']
       });
 
-      console.log('🔍 find - Reports encontrados:', reports);
-
       // Obtener total para paginación (todos los informes)
       const total = await strapi.entityService.count('api::report.report');
-
-      console.log('🔍 find - Total de reports:', total);
 
       return ctx.send({
         success: true,
@@ -192,8 +182,6 @@ export default factories.createCoreController('api::report.report', ({ strapi })
     try {
       const { user } = ctx.state;
 
-      console.log('🔍 getStats - Usuario:', user);
-      console.log('🔍 getStats - User ID:', user.id);
 
       // El admin puede ver estadísticas de todos los informes
       const stats = await strapi.service('api::report.report').getReportStats();
