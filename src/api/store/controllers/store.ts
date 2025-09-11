@@ -290,4 +290,86 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       return ctx.internalServerError('Error bloqueando tienda');
     }
   },
+
+  // Método para obtener métricas de una store específica
+  async getStoreMetrics(ctx) {
+    try {
+      const { id } = ctx.params;
+      
+      if (!id) {
+        return ctx.badRequest('ID de store requerido');
+      }
+
+      const storeId = parseInt(id);
+      
+      if (isNaN(storeId)) {
+        return ctx.badRequest('ID de store inválido');
+      }
+
+      // Verificar autenticación
+      const authHeader = ctx.request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return ctx.unauthorized('Token de autorización requerido');
+      }
+
+      const token = authHeader.substring(7);
+      const userService = strapi.plugin('users-permissions').service('jwt');
+      const payload = await userService.verify(token);
+      
+      if (!payload || !payload.id) {
+        return ctx.unauthorized('Token inválido o expirado');
+      }
+
+      const user = await strapi.entityService.findOne('plugin::users-permissions.user', payload.id);
+      
+      if (!user) {
+        return ctx.unauthorized('Usuario no encontrado');
+      }
+
+      if (user.blocked || !user.confirmed) {
+        return ctx.unauthorized('Usuario bloqueado o no confirmado');
+      }
+
+      // Verificar que el usuario tenga acceso a esta store
+      const store = await strapi.entityService.findOne('api::store.store', storeId, {
+        populate: ['owner']
+      });
+
+      if (!store) {
+        return ctx.notFound('Store no encontrada');
+      }
+
+      // Verificar que el usuario sea el dueño de la store o admin
+      const userRole = await strapi.entityService.findOne('plugin::users-permissions.role', (user as any).role?.id || 0);
+      const isAdmin = userRole?.name === 'admin';
+      const isOwner = (store as any).owner?.id === user.id;
+      
+      if (!isAdmin && !isOwner) {
+        return ctx.forbidden('No tienes acceso a esta store');
+      }
+
+      // Obtener el servicio de store
+      const storeService = strapi.service('api::store.store');
+      
+      if (!storeService) {
+        return ctx.internalServerError('Servicio de store no disponible');
+      }
+
+      // Calcular métricas
+      const result = await storeService.calculateStoreMetrics(storeId);
+
+      if (!result.success) {
+        return ctx.internalServerError(result.error);
+      }
+
+      return ctx.send({
+        success: true,
+        data: result.data
+      });
+
+    } catch (error) {
+      console.error('[StoreController] Error interno obteniendo métricas:', error);
+      return ctx.internalServerError('Error interno obteniendo métricas de la store');
+    }
+  },
 }));
