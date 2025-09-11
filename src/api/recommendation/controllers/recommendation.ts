@@ -473,5 +473,94 @@ export default ({ strapi }: { strapi: any }) => ({
       strapi.log.error('Error generating basic recommendations:', error);
       return null;
     }
+  },
+
+  async getPublicRecommendations(ctx) {
+    try {
+      const { context = 'home', limit = 10 } = ctx.query;
+
+      // Obtener productos populares basados en rating y stock
+      const products = await strapi.entityService.findMany('api::product.product', {
+        filters: {
+          stock: { $gt: 0 },
+          rating: { $gte: 3 },
+          publishedAt: { $notNull: true }
+        },
+        populate: ['Media', 'thumbnail', 'categories', 'store'],
+        sort: [
+          { rating: 'desc' },
+          { reviewCount: 'desc' },
+          { createdAt: 'desc' }
+        ],
+        limit: parseInt(limit)
+      });
+
+      // Si no hay suficientes productos con rating alto, obtener los más recientes
+      if (products.length < parseInt(limit)) {
+        const additionalProducts = await strapi.entityService.findMany('api::product.product', {
+          filters: {
+            stock: { $gt: 0 },
+            publishedAt: { $notNull: true },
+            id: { $notIn: products.map((p: any) => p.id) }
+          },
+          populate: ['Media', 'thumbnail', 'categories', 'store'],
+          sort: { createdAt: 'desc' },
+          limit: parseInt(limit) - products.length
+        });
+        products.push(...additionalProducts);
+      }
+
+      // Transformar los productos para que sean compatibles con el frontend
+      const transformedProducts = products.map(product => {
+        // Manejar imágenes correctamente
+        let images = [];
+        if (product.Media && product.Media.url) {
+          images.push({
+            id: product.Media.id || 1,
+            url: product.Media.url,
+            alternativeText: product.Media.alternativeText || product.title || 'Producto'
+          });
+        } else if (product.thumbnail && product.thumbnail.url) {
+          images.push({
+            id: product.thumbnail.id || 1,
+            url: product.thumbnail.url,
+            alternativeText: product.thumbnail.alternativeText || product.title || 'Producto'
+          });
+        }
+
+        return {
+          id: product.id,
+          title: product.title || product.name || `Producto ${product.id}`,
+          description: product.description || '',
+          price: product.price || 0,
+          slug: product.slug || `producto-${product.id}`,
+          images: images,
+          category: product.categories && product.categories.length > 0 ? {
+            id: product.categories[0].id,
+            name: product.categories[0].name
+          } : null,
+          store: product.store ? {
+            id: product.store.id,
+            name: product.store.name
+          } : null,
+          rating: product.rating || 0,
+          reviewCount: product.reviewCount || 0
+        };
+      });
+
+      ctx.body = {
+        data: transformedProducts,
+        message: {
+          title: "Productos destacados",
+          subtitle: "Los más populares y mejor valorados"
+        },
+        context: context,
+        count: transformedProducts.length,
+        algorithm: 'popularity'
+      };
+    } catch (error) {
+      strapi.log.error('Error in getPublicRecommendations:', error);
+      ctx.internalServerError('Error getting public recommendations');
+    }
   }
 });

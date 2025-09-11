@@ -57,6 +57,15 @@ export default {
         policies: [],
         middlewares: []
       }
+    },
+    {
+      method: 'GET',
+      path: '/recommendations/public',
+      handler: 'recommendation.getPublicRecommendations',
+      config: {
+        policies: [],
+        middlewares: []
+      }
     }
   ]
 };

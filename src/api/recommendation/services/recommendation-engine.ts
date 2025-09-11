@@ -6,7 +6,7 @@ export default class RecommendationEngine {
 
   constructor(strapi: any) {
     this.strapi = strapi;
-    this.userBehaviorService = new (require('../user-behavior/services/user-behavior').default)(strapi);
+    this.userBehaviorService = new (require('../../user-behavior/services/user-behavior').default)(strapi);
   }
 
   async getRecommendations(userId: string, context: string, limit = 10) {
