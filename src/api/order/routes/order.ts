@@ -4,30 +4,79 @@
 
 import { factories } from '@strapi/strapi';
 
-export default factories.createCoreRouter('api::order.order', {
-  config: {
-    find: {
-      policies: [],
-      middlewares: [],
+export default {
+  routes: [
+    // Ruta personalizada para obtener órdenes del usuario
+    {
+      method: 'GET',
+      path: '/orders/user',
+      handler: 'order.getUserOrders',
+      config: {
+        auth: {
+          scope: ['authenticated']
+        },
+        policies: [],
+        middlewares: [],
+      },
     },
-    findOne: {
-      policies: [],
-      middlewares: [],
+    // Ruta personalizada para obtener una orden específica
+    {
+      method: 'GET',
+      path: '/orders/:documentId/detail',
+      handler: 'order.getOrderById',
+      config: {
+        auth: {
+          scope: ['authenticated']
+        },
+        policies: [],
+        middlewares: [],
+      },
     },
-    create: {
-      policies: [],
-      middlewares: [],
+    // Rutas estándar de Strapi
+    {
+      method: 'GET',
+      path: '/orders',
+      handler: 'order.find',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
     },
-    update: {
-      policies: [],
-      middlewares: [],
+    {
+      method: 'GET',
+      path: '/orders/:documentId',
+      handler: 'order.findOne',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
     },
-    delete: {
-      policies: [],
-      middlewares: [],
+    {
+      method: 'POST',
+      path: '/orders',
+      handler: 'order.create',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
     },
-  },
-  only: ['find', 'findOne', 'create', 'update', 'delete'],
-  except: [],
-  prefix: '',
-}); 
+    {
+      method: 'PUT',
+      path: '/orders/:documentId',
+      handler: 'order.update',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'DELETE',
+      path: '/orders/:documentId',
+      handler: 'order.delete',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+  ]
+}; 

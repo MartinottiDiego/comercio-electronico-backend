@@ -13,7 +13,7 @@ export default factories.createCoreController('api::order.order', ({ strapi }) =
 
       const orders = await strapi.entityService.findMany('api::order.order', {
         filters: { user: userId },
-        populate: ['order_items', 'order_items.product', 'order_items.product.images']
+        populate: ['order_items', 'order_items.product', 'order_items.product.Media', 'order_items.product.thumbnail']
       });
 
       return ctx.send({
@@ -29,11 +29,11 @@ export default factories.createCoreController('api::order.order', ({ strapi }) =
   // Método para obtener una orden específica
   async getOrderById(ctx) {
     try {
-      const { id } = ctx.params;
+      const { documentId } = ctx.params;
       const { user } = ctx.state;
 
-      const order = await strapi.entityService.findOne('api::order.order', id, {
-        populate: ['order_items', 'order_items.product', 'order_items.product.images']
+      const order = await strapi.entityService.findOne('api::order.order', documentId, {
+        populate: ['order_items', 'order_items.product', 'order_items.product.Media', 'order_items.product.thumbnail']
       });
 
       if (!order) {
