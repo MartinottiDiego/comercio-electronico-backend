@@ -127,5 +127,19 @@ export default {
         },
       },
     },
+    {
+      method: 'GET',
+      path: '/stores/:id/metrics',
+      handler: 'store.getStoreMetrics',
+      config: {
+        auth: false,
+        description: 'Obtiene métricas específicas de una tienda',
+        tag: {
+          plugin: 'store',
+          name: 'Store Metrics',
+          actionType: 'metrics',
+        },
+      },
+    },
   ],
 };
