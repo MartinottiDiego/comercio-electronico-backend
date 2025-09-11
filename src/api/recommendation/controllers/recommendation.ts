@@ -129,6 +129,16 @@ export default ({ strapi }: { strapi: any }) => ({
       const items = recommendation.items || [];
       const limitedItems = limit ? items.slice(0, parseInt(limit)) : items;
 
+      // Si no hay suficientes items, generar más recomendaciones básicas
+      if (limitedItems.length < parseInt(limit)) {
+        strapi.log.info('Not enough recommendations, generating more basic ones for user:', userId);
+        const basicRecommendations = await this.generateBasicRecommendations(userId);
+        if (basicRecommendations && basicRecommendations.items.length > limitedItems.length) {
+          const additionalItems = basicRecommendations.items.slice(limitedItems.length, parseInt(limit));
+          limitedItems.push(...additionalItems);
+        }
+      }
+
       ctx.body = {
         success: true,
         data: {
@@ -137,7 +147,7 @@ export default ({ strapi }: { strapi: any }) => ({
           generatedAt: recommendation.generatedAt,
           ttl: recommendation.ttl,
           items: limitedItems,
-          totalItems: items.length,
+          totalItems: limitedItems.length,
           context: recommendation.context,
           metadata: recommendation.metadata
         }
@@ -387,16 +397,12 @@ export default ({ strapi }: { strapi: any }) => ({
   async generateBasicRecommendations(userId) {
     try {
       // Obtener productos populares (con más stock y rating alto)
-      const products = await strapi.documents('api::product.product').findMany({
+      const products = await strapi.entityService.findMany('api::product.product', {
         filters: {
           stock: { $gt: 0 },
           rating: { $gte: 3 }
         },
-        populate: {
-          categories: true,
-          Media: true,
-          thumbnail: true
-        },
+        populate: ['categories', 'Media', 'thumbnail', 'store'],
         sort: { rating: 'desc' },
         limit: 12
       });
