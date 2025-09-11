@@ -52,7 +52,6 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
   // Nuevo método para obtener stores top-rated
   async getTopRated({ limit = 8, populate = 'image,products' }) {
     try {
-      console.log('[StoresSlider] Iniciando getTopRated con límite:', limit);
       
       // Construir query para Strapi v5 - usar where en lugar de filters
       const query = {
@@ -85,19 +84,9 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
         },
       };
 
-      console.log('[StoresSlider] Query construida:', JSON.stringify(query, null, 2));
 
       const stores = await strapi.db.query('api::store.store').findMany(query);
       
-      console.log('[StoresSlider] Tiendas encontradas:', stores.length);
-      if (stores.length > 0) {
-        console.log('[StoresSlider] Primera tienda:', {
-          id: stores[0].id,
-          name: stores[0].name,
-          rating: stores[0].rating,
-          verified: stores[0].verified
-        });
-      }
       
       // Normalizar respuesta
       const normalizedStores = stores.map(store => ({
@@ -117,10 +106,9 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
         },
       }));
 
-      console.log('[StoresSlider] Respuesta normalizada:', normalizedStores.length, 'tiendas');
       return normalizedStores;
     } catch (error) {
-      console.error('[StoresSlider] Error in getTopRated service:', error);
+      console.error('Error in getTopRated service:', error);
       throw new Error('Error obteniendo tiendas destacadas');
     }
   },
@@ -157,33 +145,17 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
         }
       });
 
-      console.log(`[StoreService] Total de órdenes en la BD: ${orders.length}`);
       
       // Debug: Revisar estructura de las órdenes
       if (orders.length > 0) {
         const firstOrder = orders[0];
-        console.log(`[StoreService] Estructura de la primera orden:`, {
-          id: firstOrder.id,
-          total: (firstOrder as any).total,
-          createdAt: (firstOrder as any).createdAt,
-          orderItems: (firstOrder as any).order_items,
-          orderItemsCount: (firstOrder as any).order_items?.length || 0
-        });
         
         if ((firstOrder as any).order_items?.length > 0) {
           const firstItem = (firstOrder as any).order_items[0];
-          console.log(`[StoreService] Estructura del primer item:`, {
-            itemId: firstItem.id,
-            product: firstItem.product,
-            productId: firstItem.product?.id,
-            store: firstItem.product?.store,
-            storeId: firstItem.product?.store?.id || firstItem.product?.store
-          });
         }
       }
 
       // Filtrar órdenes que contienen productos de esta store
-      console.log(`[StoreService] Filtrando órdenes para store ID: ${storeId}`);
       
       const filteredOrders = orders.filter(order => {
         const hasMatchingItems = (order as any).order_items?.some((item: any) => {
@@ -192,7 +164,6 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
           const matches = itemStoreIdNum === storeId;
           
           if (matches) {
-            console.log(`[StoreService] Orden ${order.id} coincide - Item store ID: ${itemStoreId}`);
           }
           
           return matches;
@@ -201,31 +172,9 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
         return hasMatchingItems;
       });
 
-      console.log(`[StoreService] Órdenes filtradas: ${filteredOrders.length} de ${orders.length} total`);
       
       if (filteredOrders.length > 0) {
-        console.log(`[StoreService] Primeras órdenes filtradas:`, filteredOrders.slice(0, 3).map(order => ({
-          id: order.id,
-          total: (order as any).total,
-          createdAt: (order as any).createdAt,
-          orderItems: (order as any).order_items?.length || 0
-        })));
       } else {
-        console.log(`[StoreService] ⚠️ NO HAY ÓRDENES FILTRADAS - Revisando datos originales:`);
-        if (orders.length > 0) {
-          const firstOrder = orders[0];
-          console.log(`[StoreService] Primera orden original:`, {
-            id: firstOrder.id,
-            createdAt: (firstOrder as any).createdAt,
-            orderItems: (firstOrder as any).order_items?.map((item: any) => ({
-              itemId: item.id,
-              productId: item.product?.id,
-              productName: item.product?.name,
-              storeId: item.product?.store?.id || item.product?.store,
-              subtotal: item.subtotal
-            }))
-          });
-        }
       }
 
       // Calcular métricas de ventas
@@ -239,9 +188,6 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
 
       // Calcular datos para gráficos
       const chartData = this.calculateChartData(filteredOrders, products, parseInt(store.id.toString()));
-      console.log(`[StoreService] Datos de gráficos calculados:`, chartData);
-      console.log(`[StoreService] Ventas por mes detalladas:`, chartData.salesByMonth);
-      console.log(`[StoreService] Ventas por categoría detalladas:`, chartData.salesByCategory);
 
       // Combinar todas las métricas
       const metrics = {
@@ -259,11 +205,6 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
         lastUpdated: new Date().toISOString()
       };
 
-      console.log(`[StoreService] Métricas completas con gráficos:`, {
-        hasCharts: !!metrics.charts,
-        salesByMonth: metrics.charts?.salesByMonth?.length || 0,
-        salesByCategory: metrics.charts?.salesByCategory?.length || 0
-      });
 
       return {
         success: true,
@@ -271,7 +212,7 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
       };
 
     } catch (error) {
-      console.error(`[StoreService] Error calculando métricas para store ${storeId}:`, error);
+      console.error(`Error calculando métricas para store ${storeId}:`, error);
       return {
         success: false,
         error: 'Error interno calculando métricas'
@@ -467,15 +408,12 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
 
   // Método para calcular datos de gráficos
   calculateChartData(orders: any[], products: any[], storeId: number) {
-    console.log(`[StoreService] Calculando datos de gráficos para ${orders.length} órdenes y ${products.length} productos`);
     
     // Calcular ventas por mes (últimos 12 meses)
     const salesByMonth = this.calculateSalesByMonth(orders, storeId);
-    console.log(`[StoreService] Ventas por mes calculadas:`, salesByMonth);
     
     // Calcular distribución por categorías
     const salesByCategory = this.calculateSalesByCategory(orders, products, storeId);
-    console.log(`[StoreService] Ventas por categoría calculadas:`, salesByCategory);
 
     return {
       salesByMonth,
@@ -485,7 +423,6 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
 
   // Método auxiliar para calcular ventas por mes
   calculateSalesByMonth(orders: any[], storeId: number) {
-    console.log(`[StoreService] Calculando ventas por mes para ${orders.length} órdenes`);
     
     // Generar los últimos 12 meses
     const now = new Date();
@@ -520,7 +457,6 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
         return sum + storeOrderTotal;
       }, 0);
       
-      console.log(`[StoreService] ${monthName}: ${monthOrders.length} órdenes, €${totalAmount}`);
       
       months.push({
         month: monthName,
@@ -529,13 +465,11 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
       });
     }
     
-    console.log(`[StoreService] Ventas por mes calculadas:`, months);
     return months;
   },
 
   // Método auxiliar para calcular ventas por categoría
   calculateSalesByCategory(orders: any[], products: any[], storeId: number) {
-    console.log(`[StoreService] Calculando ventas por categoría para ${orders.length} órdenes y ${products.length} productos, store ID: ${storeId}`);
     
     const categoryColors = {
       'Electrónicos': '#ef4444',
@@ -559,19 +493,15 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
             const category = item.product.categories[0].name;
             const amount = (item.subtotal || 0);
             categorySales[category] = (categorySales[category] || 0) + amount;
-            console.log(`[StoreService] ✅ Categoría: ${category}, monto: €${amount}`);
           } else {
-            console.log(`[StoreService] ⚠️ Producto sin categoría: ${item.product?.title || 'Sin título'}`);
           }
         }
       });
     });
 
-    console.log(`[StoreService] Categorías encontradas:`, Object.keys(categorySales));
 
     // Si no hay datos de categorías, retornar array vacío
     if (Object.keys(categorySales).length === 0) {
-      console.log(`[StoreService] No hay categorías encontradas, retornando array vacío`);
       return [];
     }
 
@@ -584,7 +514,6 @@ export default factories.createCoreService('api::store.store', ({ strapi }) => (
       percentage: total > 0 ? Math.round((value / total) * 100) : 0
     }));
 
-    console.log(`[StoreService] Resultado final categorías:`, result);
     return result;
   },
 }));
