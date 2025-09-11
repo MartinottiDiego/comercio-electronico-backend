@@ -9,8 +9,11 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   // Método existente extendido
   async find(ctx) {
     // Lógica existente del core controller
-    const { data, meta } = await super.find(ctx);
-    return { data, meta };
+    const data = await strapi.entityService.findMany('api::store.store', {
+      ...ctx.query,
+      populate: ['image']
+    });
+    return { data };
   },
 
   // Nuevo método para top-rated stores

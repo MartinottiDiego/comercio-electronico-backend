@@ -19,6 +19,15 @@ export default {
         },
       },
     },
+    // Ruta para top-rated stores (debe ir antes de /stores/:id)
+    {
+      method: 'GET',
+      path: '/stores/top-rated',
+      handler: 'store.getTopRated',
+      config: {
+        auth: false,
+      },
+    },
     {
       method: 'GET',
       path: '/stores/:id',
@@ -73,15 +82,6 @@ export default {
           name: 'Store',
           actionType: 'delete',
         },
-      },
-    },
-    // Ruta para top-rated stores
-    {
-      method: 'GET',
-      path: '/stores/top-rated',
-      handler: 'store.find',
-      config: {
-        auth: false,
       },
     },
     // Rutas para gestión de estados de tiendas
