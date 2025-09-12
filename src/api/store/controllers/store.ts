@@ -6,6 +6,66 @@ import { factories } from '@strapi/strapi'
 import { StoreStatus, STORE_STATUS_CONFIG } from '../../../types/store-status'
 
 export default factories.createCoreController('api::store.store', ({ strapi }) => ({
+  // Método personalizado para crear stores
+  async create(ctx) {
+    try {
+      const { data } = ctx.request.body;
+      
+      if (!data) {
+        return ctx.badRequest('Datos requeridos');
+      }
+
+      // Verificar autenticación
+      const authHeader = ctx.request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return ctx.unauthorized('Token de autenticación requerido');
+      }
+
+      const token = authHeader.substring(7);
+      const userService = strapi.plugin('users-permissions').service('jwt');
+      const payload = await userService.verify(token);
+      
+      if (!payload || !payload.id) {
+        return ctx.unauthorized('Token inválido o expirado');
+      }
+
+      const user = await strapi.entityService.findOne('plugin::users-permissions.user', payload.id);
+      
+      if (!user) {
+        return ctx.unauthorized('Usuario no encontrado');
+      }
+
+      if (user.blocked || !user.confirmed) {
+        return ctx.unauthorized('Usuario bloqueado o no confirmado');
+      }
+
+      // Generar slug basado en el nombre
+      const slug = data.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
+      // Crear la tienda usando el método estándar de Strapi
+      const store = await strapi.entityService.create('api::store.store', {
+        data: {
+          ...data,
+          slug: slug,
+          owner: user.id, // Usar el ID numérico del usuario
+          storeStatus: 'pending',
+          verified: false,
+          active: false,
+          blocked: false
+        },
+        populate: ['owner', 'image']
+      });
+
+      return { data: store };
+    } catch (error) {
+      console.error('Error creando tienda:', error);
+      return ctx.internalServerError('Error creando tienda');
+    }
+  },
+
   // Método existente extendido
   async find(ctx) {
     // Lógica existente del core controller
