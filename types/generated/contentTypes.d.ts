@@ -1286,6 +1286,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     activityProductViews: Schema.Attribute.Relation<
       'oneToMany',
       'api::activity-product-view.activity-product-view'
@@ -1298,10 +1299,15 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::category.category'
     >;
+    color: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 50;
+      }>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.Text & Schema.Attribute.Required;
+    dimensions: Schema.Attribute.JSON;
     discountPercentage: Schema.Attribute.Decimal &
       Schema.Attribute.SetMinMax<
         {
@@ -1311,6 +1317,8 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
         number
       > &
       Schema.Attribute.DefaultTo<0>;
+    featured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    free_shipping: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     freeShipping: Schema.Attribute.Boolean;
     hasVariants: Schema.Attribute.Boolean;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -1319,6 +1327,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'api::product.product'
     > &
       Schema.Attribute.Private;
+    material: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
     maxQuantity: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
@@ -1328,6 +1340,17 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       > &
       Schema.Attribute.DefaultTo<10>;
     Media: Schema.Attribute.Media<'images'>;
+    model: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    original_price: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
     originalPrice: Schema.Attribute.Decimal &
       Schema.Attribute.SetMinMax<
         {
@@ -1335,6 +1358,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
         },
         number
       >;
+    power: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 50;
+      }>;
     price: Schema.Attribute.Decimal &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -1353,6 +1380,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
         number
       > &
       Schema.Attribute.DefaultTo<0>;
+    return_policy: Schema.Attribute.Text;
     reviewCount: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
@@ -1362,7 +1390,22 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       > &
       Schema.Attribute.DefaultTo<0>;
     reviews: Schema.Attribute.Relation<'oneToMany', 'api::review.review'>;
+    shipping_info: Schema.Attribute.Text;
+    short_description: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 300;
+      }>;
+    size: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    sku: Schema.Attribute.String &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
+    specifications: Schema.Attribute.JSON;
     stock: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -1387,6 +1430,21 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::product-variant.product-variant'
     >;
+    voltage: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+      }>;
+    warranty: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 200;
+      }>;
+    weight: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
   };
 }
 

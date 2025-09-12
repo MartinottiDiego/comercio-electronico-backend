@@ -39,29 +39,96 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         return ctx.unauthorized('Usuario bloqueado o no confirmado');
       }
 
-      // Generar slug basado en el nombre
-      const slug = data.name
+      // Generar nombre y slug únicos basados en el nombre original
+      let baseName = data.name;
+      let baseSlug = data.name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
+      
+      let finalName = baseName;
+      let slug = baseSlug;
+      let counter = 1;
+      
+      // Verificar que tanto el nombre como el slug sean únicos
+      while (true) {
+        const existingStore = await strapi.db.query('api::store.store').findOne({
+          where: { 
+            $or: [
+              { name: finalName },
+              { slug: slug }
+            ]
+          }
+        });
+        
+        if (!existingStore) {
+          break; // Tanto nombre como slug son únicos
+        }
+        
+        finalName = `${baseName} ${counter}`;
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
 
-      // Crear la tienda usando el método estándar de Strapi
+      // Preparar datos de la tienda
+      const storeData: any = {
+        name: finalName, // Usar nombre único
+        description: data.description,
+        specialty: data.specialty,
+        location: data.location,
+        slug: slug, // Enviar slug único
+        owner: user.id, // Usar el ID numérico del usuario
+        storeStatus: 'pending',
+        verified: false,
+        active: false,
+        blocked: false
+      };
+
+      // Agregar imagen solo si existe y es un número válido
+      if (data.image && typeof data.image === 'number') {
+        storeData.image = data.image;
+      }
+
+      console.log('=== DEBUG store creation ===');
+      console.log('Original name:', data.name);
+      console.log('Final name:', finalName);
+      console.log('Generated slug:', slug);
+      console.log('storeData:', JSON.stringify(storeData, null, 2));
+
+      // Crear la tienda usando la API de Strapi 5
+      console.log('=== ANTES DE CREAR ===');
       const store = await strapi.entityService.create('api::store.store', {
-        data: {
-          ...data,
-          slug: slug,
-          owner: user.id, // Usar el ID numérico del usuario
-          storeStatus: 'pending',
-          verified: false,
-          active: false,
-          blocked: false
-        },
-        populate: ['owner', 'image']
+        data: storeData,
+        populate: { owner: true, image: true }
       });
+      console.log('=== DESPUÉS DE CREAR ===');
 
       return { data: store };
     } catch (error) {
       console.error('Error creando tienda:', error);
+      
+      // Mostrar detalles del error de validación
+      if (error.name === 'YupValidationError') {
+        console.error("=== YUP VALIDATION ERROR DETECTED ===");
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        console.error("Error details:", error.details);
+        
+        if (error.details && error.details.errors) {
+          console.error("Number of errors:", error.details.errors.length);
+          error.details.errors.forEach((err: any, index: number) => {
+            console.error(`=== ERROR ${index + 1} ===`);
+            console.error("Path:", err.path);
+            console.error("Message:", err.message);
+            console.error("Value:", err.value);
+            console.error("Type:", err.type);
+            console.error("Full error object:", JSON.stringify(err, null, 2));
+          });
+        }
+        
+        return ctx.badRequest(`Error de validación: ${error.message}`);
+      }
+      
       return ctx.internalServerError('Error creando tienda');
     }
   },

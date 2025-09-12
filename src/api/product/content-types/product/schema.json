@@ -25,9 +25,17 @@
       "type": "text",
       "required": true
     },
+    "short_description": {
+      "type": "text",
+      "maxLength": 300
+    },
     "price": {
       "type": "decimal",
       "required": true,
+      "min": 0
+    },
+    "original_price": {
+      "type": "decimal",
       "min": 0
     },
     "stock": {
@@ -35,6 +43,19 @@
       "required": true,
       "default": 0,
       "min": 0
+    },
+    "sku": {
+      "type": "string",
+      "maxLength": 100,
+      "unique": true
+    },
+    "brand": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 100
     },
     "store": {
       "type": "relation",
@@ -80,6 +101,58 @@
     },
     "subcategory": {
       "type": "string"
+    },
+    "weight": {
+      "type": "decimal",
+      "min": 0
+    },
+    "dimensions": {
+      "type": "json"
+    },
+    "color": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "size": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "material": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "power": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "voltage": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "warranty": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "shipping_info": {
+      "type": "text"
+    },
+    "return_policy": {
+      "type": "text"
+    },
+    "specifications": {
+      "type": "json"
+    },
+    "free_shipping": {
+      "type": "boolean",
+      "default": false
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
     },
     "originalPrice": {
       "type": "decimal",
