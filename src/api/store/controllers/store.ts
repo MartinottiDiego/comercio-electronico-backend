@@ -592,7 +592,11 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   async getStoreAnalytics(ctx) {
     try {
       const { id } = ctx.params;
-      const { period = '30d' } = ctx.query; // 7d, 30d, 90d, 1y
+      const { period = '30d', groupBy = 'day' } = ctx.query; // period: 7d, 30d, 90d, 1y | groupBy: hour, day, week, month, year
+      
+      // Validar groupBy
+      const validGroupBy = ['hour', 'day', 'week', 'month', 'year'];
+      const selectedGroupBy = validGroupBy.includes(groupBy as string) ? groupBy as string : 'day';
 
       if (!id) {
         return ctx.badRequest('ID de tienda requerido');
@@ -703,25 +707,69 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
       const totalRevenue = ordersWithTotals.reduce((sum, order) => sum + (order.total || 0), 0);
 
-      // Obtener ventas por día para gráfico - incluir pedidos pagados
-      const dailySales = await strapi.db.query('api::order.order').findMany({
+      // Obtener ventas por día para gráfico - usar órdenes en lugar de pagos
+      // Obtener órdenes pagadas que contienen productos de esta tienda
+      const ordersWithPayments = await strapi.db.query('api::order.order').findMany({
         where: {
+          paymentStatus: 'paid',
+          createdAt: { $gte: startDate },
           order_items: {
             product: {
               store: id
             }
-          },
-          paymentStatus: 'paid', // Cambiar a paymentStatus
-          createdAt: { $gte: startDate }
+          }
         },
-        select: ['total', 'createdAt']
+        populate: {
+          payments: true,
+          order_items: {
+            populate: {
+              product: true
+            }
+          }
+        }
       });
 
-      // Agrupar ventas por día
-      const salesByDay: { [key: string]: number } = {};
-      dailySales.forEach(order => {
-        const date = new Date(order.createdAt).toISOString().split('T')[0];
-        salesByDay[date] = (salesByDay[date] || 0) + (order.total || 0);
+      // Función helper para agrupar fechas según el tipo de agrupación
+      const groupDateByType = (date: Date, groupType: string): string => {
+        const d = new Date(date);
+        
+        switch (groupType) {
+          case 'hour':
+            return d.toISOString().slice(0, 13) + ':00:00'; // YYYY-MM-DDTHH:00:00
+          case 'day':
+            return d.toISOString().slice(0, 10); // YYYY-MM-DD
+          case 'week':
+            // Obtener el lunes de la semana
+            const monday = new Date(d);
+            monday.setDate(d.getDate() - d.getDay() + 1);
+            return monday.toISOString().slice(0, 10);
+          case 'month':
+            return d.toISOString().slice(0, 7); // YYYY-MM
+          case 'year':
+            return d.toISOString().slice(0, 4); // YYYY
+          default:
+            return d.toISOString().slice(0, 10);
+        }
+      };
+
+      // Agrupar ventas según el tipo de agrupación
+      const salesData = ordersWithPayments.map(order => {
+        // Usar la fecha del pago más reciente, o la fecha de creación de la orden como fallback
+        const paymentDate = order.payments && order.payments.length > 0 
+          ? order.payments[order.payments.length - 1].date 
+          : order.createdAt;
+        
+        return {
+          date: groupDateByType(new Date(paymentDate), selectedGroupBy),
+          amount: order.total || 0
+        };
+      });
+
+      // Agrupar ventas por período
+      const salesByPeriod: { [key: string]: number } = {};
+      salesData.forEach(sale => {
+        const period = sale.date;
+        salesByPeriod[period] = (salesByPeriod[period] || 0) + sale.amount;
       });
 
       // Obtener productos más vendidos - incluir pedidos pagados
@@ -784,10 +832,11 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             averageOrderValue: completedOrders > 0 ? totalRevenue / completedOrders : 0
           },
           charts: {
-            dailySales: Object.entries(salesByDay).map(([date, amount]) => ({
-              date,
+            sales: Object.entries(salesByPeriod).map(([period, amount]) => ({
+              period,
               amount
-            }))
+            })),
+            groupBy: selectedGroupBy
           },
           topProducts: topSellingProducts
         }
