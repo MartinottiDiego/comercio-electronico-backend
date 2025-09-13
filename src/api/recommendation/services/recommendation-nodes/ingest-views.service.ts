@@ -53,7 +53,7 @@ export class IngestViewsNode extends BaseNode {
   private async extractViewData(context: NodeContext): Promise<UserViewSummary[]> {
     const { userIds, startDate, endDate, config } = context;
     
-    // Calculate date range
+    
     const recencyDate = new Date();
     recencyDate.setDate(recencyDate.getDate() - config.recencyDays);
     const fromDate = startDate || recencyDate;
@@ -61,7 +61,7 @@ export class IngestViewsNode extends BaseNode {
 
     this.log(`Extracting views from ${fromDate.toISOString()} to ${toDate.toISOString()}`);
 
-    // Build query filters for user-behavior
+    
     const behaviorFilters: any = {
       action: 'view',
       timestamp: {
@@ -76,7 +76,7 @@ export class IngestViewsNode extends BaseNode {
       };
     }
 
-    // Fetch view data from user-behavior
+   
     const behaviors = await this.strapi.documents('api::user-behavior.user-behavior').findMany({
       filters: behaviorFilters,
       populate: {
@@ -90,7 +90,7 @@ export class IngestViewsNode extends BaseNode {
 
     this.log(`Found ${behaviors.length} view behaviors`);
 
-    // Also fetch from activity-product-view if it exists
+    
     let activityViews: any[] = [];
     try {
       const activityFilters: any = {

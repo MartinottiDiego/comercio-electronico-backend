@@ -55,7 +55,7 @@ export class IngestOrdersNode extends BaseNode {
   private async extractPurchaseData(context: NodeContext): Promise<UserPurchaseSummary[]> {
     const { userIds, startDate, endDate, config } = context;
     
-    // Calculate date range
+    
     const recencyDate = new Date();
     recencyDate.setDate(recencyDate.getDate() - config.recencyDays);
     const fromDate = startDate || recencyDate;
@@ -63,7 +63,7 @@ export class IngestOrdersNode extends BaseNode {
 
     this.log(`Extracting orders from ${fromDate.toISOString()} to ${toDate.toISOString()}`);
 
-    // Build query filters
+    
     const orderFilters: any = {
       createdAt: {
         $gte: fromDate.toISOString(),

@@ -420,4 +420,507 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       return ctx.internalServerError('Error bloqueando tienda');
     }
   },
+
+  // ===== NUEVOS MÉTODOS PARA GESTIÓN DE TIENDA =====
+
+  // Obtener productos de una tienda específica
+  async getStoreProducts(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { page = 1, pageSize = 25, search, category, sortBy = 'createdAt', sortOrder = 'desc' } = ctx.query;
+
+      if (!id) {
+        return ctx.badRequest('ID de tienda requerido');
+      }
+
+      // Verificar que la tienda existe
+      const store = await strapi.entityService.findOne('api::store.store', id);
+      if (!store) {
+        return ctx.notFound('Tienda no encontrada');
+      }
+
+      // Construir filtros
+      const filters: any = {
+        store: id
+      };
+
+      if (search) {
+        filters.$or = [
+          { title: { $containsi: search } },
+          { description: { $containsi: search } },
+          { sku: { $containsi: search } }
+        ];
+      }
+
+      if (category) {
+        filters.categories = { name: { $containsi: category } };
+      }
+
+      // Construir ordenamiento
+      const sort: any = {};
+      sort[sortBy as string] = sortOrder === 'asc' ? 'asc' : 'desc';
+
+      // Obtener productos con paginación
+      const products = await strapi.entityService.findMany('api::product.product', {
+        filters,
+        sort,
+        populate: ['thumbnail', 'Media', 'categories', 'store'],
+        pagination: {
+          page: parseInt(page as string),
+          pageSize: parseInt(pageSize as string)
+        }
+      });
+
+      // Obtener total para paginación
+      const total = await strapi.db.query('api::product.product').count({
+        where: filters
+      });
+
+      return {
+        data: products,
+        meta: {
+          pagination: {
+            page: parseInt(page as string),
+            pageSize: parseInt(pageSize as string),
+            pageCount: Math.ceil(total / parseInt(pageSize as string)),
+            total
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error obteniendo productos de tienda:', error);
+      return ctx.internalServerError('Error obteniendo productos de la tienda');
+    }
+  },
+
+  // Obtener pedidos de una tienda específica
+  async getStoreOrders(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { 
+        page = 1, 
+        pageSize = 25, 
+        status, 
+        paymentStatus, 
+        dateFrom, 
+        dateTo,
+        sortBy = 'createdAt', 
+        sortOrder = 'desc' 
+      } = ctx.query;
+
+      if (!id) {
+        return ctx.badRequest('ID de tienda requerido');
+      }
+
+      // Verificar que la tienda existe
+      const store = await strapi.entityService.findOne('api::store.store', id);
+      if (!store) {
+        return ctx.notFound('Tienda no encontrada');
+      }
+
+      // Construir filtros
+      const filters: any = {
+        order_items: {
+          product: {
+            store: id
+          }
+        }
+      };
+
+      if (status) {
+        filters.orderStatus = status;
+      }
+
+      if (paymentStatus) {
+        filters.paymentStatus = paymentStatus;
+      }
+
+      if (dateFrom || dateTo) {
+        filters.createdAt = {};
+        if (dateFrom) {
+          filters.createdAt.$gte = new Date(dateFrom as string);
+        }
+        if (dateTo) {
+          filters.createdAt.$lte = new Date(dateTo as string);
+        }
+      }
+
+      // Construir ordenamiento
+      const sort: any = {};
+      sort[sortBy as string] = sortOrder === 'asc' ? 'asc' : 'desc';
+
+      // Obtener pedidos con paginación
+      const orders = await strapi.entityService.findMany('api::order.order', {
+        filters,
+        sort,
+        populate: [
+          'user',
+          'order_items',
+          'order_items.product',
+          'order_items.product.store',
+          'payments'
+        ],
+        pagination: {
+          page: parseInt(page as string),
+          pageSize: parseInt(pageSize as string)
+        }
+      });
+
+      // Obtener total para paginación
+      const total = await strapi.db.query('api::order.order').count({
+        where: filters
+      });
+
+      return {
+        data: orders,
+        meta: {
+          pagination: {
+            page: parseInt(page as string),
+            pageSize: parseInt(pageSize as string),
+            pageCount: Math.ceil(total / parseInt(pageSize as string)),
+            total
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error obteniendo pedidos de tienda:', error);
+      return ctx.internalServerError('Error obteniendo pedidos de la tienda');
+    }
+  },
+
+  // Obtener analytics de una tienda
+  async getStoreAnalytics(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { period = '30d', groupBy = 'day' } = ctx.query; // period: 7d, 30d, 90d, 1y | groupBy: hour, day, week, month, year
+      
+      // Validar groupBy
+      const validGroupBy = ['hour', 'day', 'week', 'month', 'year'];
+      const selectedGroupBy = validGroupBy.includes(groupBy as string) ? groupBy as string : 'day';
+
+      if (!id) {
+        return ctx.badRequest('ID de tienda requerido');
+      }
+
+      // Verificar que la tienda existe
+      const store = await strapi.entityService.findOne('api::store.store', id);
+      if (!store) {
+        return ctx.notFound('Tienda no encontrada');
+      }
+
+      // Calcular fechas según el período
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (period) {
+        case '7d':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case '30d':
+          startDate.setDate(now.getDate() - 30);
+          break;
+        case '90d':
+          startDate.setDate(now.getDate() - 90);
+          break;
+        case '1y':
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+        default:
+          startDate.setDate(now.getDate() - 30);
+      }
+
+      // Obtener estadísticas de productos
+      const totalProducts = await strapi.db.query('api::product.product').count({
+        where: { store: id }
+      });
+
+      const activeProducts = await strapi.db.query('api::product.product').count({
+        where: { 
+          store: id,
+          stock: { $gt: 0 }
+        }
+      });
+
+      const lowStockProducts = await strapi.db.query('api::product.product').count({
+        where: { 
+          store: id,
+          stock: { $lte: 5, $gt: 0 }
+        }
+      });
+
+      const outOfStockProducts = await strapi.db.query('api::product.product').count({
+        where: { 
+          store: id,
+          stock: 0
+        }
+      });
+
+      // Obtener estadísticas de pedidos
+      const totalOrders = await strapi.db.query('api::order.order').count({
+        where: {
+          order_items: {
+            product: {
+              store: id
+            }
+          },
+          createdAt: { $gte: startDate }
+        }
+      });
+
+      const completedOrders = await strapi.db.query('api::order.order').count({
+        where: {
+          order_items: {
+            product: {
+              store: id
+            }
+          },
+          paymentStatus: 'paid', // Cambiar a paymentStatus para consistencia
+          createdAt: { $gte: startDate }
+        }
+      });
+
+      const pendingOrders = await strapi.db.query('api::order.order').count({
+        where: {
+          order_items: {
+            product: {
+              store: id
+            }
+          },
+          orderStatus: { $in: ['pending', 'confirmed', 'processing', 'shipped'] },
+          createdAt: { $gte: startDate }
+        }
+      });
+
+      // Obtener ingresos totales - incluir pedidos pagados (no solo entregados)
+      const ordersWithTotals = await strapi.db.query('api::order.order').findMany({
+        where: {
+          order_items: {
+            product: {
+              store: id
+            }
+          },
+          paymentStatus: 'paid', // Cambiar a paymentStatus en lugar de orderStatus
+          createdAt: { $gte: startDate }
+        },
+        select: ['total']
+      });
+
+      const totalRevenue = ordersWithTotals.reduce((sum, order) => sum + (order.total || 0), 0);
+
+      // Obtener ventas por día para gráfico - usar órdenes en lugar de pagos
+      // Obtener órdenes pagadas que contienen productos de esta tienda
+      const ordersWithPayments = await strapi.db.query('api::order.order').findMany({
+        where: {
+          paymentStatus: 'paid',
+          createdAt: { $gte: startDate },
+          order_items: {
+            product: {
+              store: id
+            }
+          }
+        },
+        populate: {
+          payments: true,
+          order_items: {
+            populate: {
+              product: true
+            }
+          }
+        }
+      });
+
+      // Función helper para agrupar fechas según el tipo de agrupación
+      const groupDateByType = (date: Date, groupType: string): string => {
+        const d = new Date(date);
+        
+        switch (groupType) {
+          case 'hour':
+            return d.toISOString().slice(0, 13) + ':00:00'; // YYYY-MM-DDTHH:00:00
+          case 'day':
+            return d.toISOString().slice(0, 10); // YYYY-MM-DD
+          case 'week':
+            // Obtener el lunes de la semana
+            const monday = new Date(d);
+            monday.setDate(d.getDate() - d.getDay() + 1);
+            return monday.toISOString().slice(0, 10);
+          case 'month':
+            return d.toISOString().slice(0, 7); // YYYY-MM
+          case 'year':
+            return d.toISOString().slice(0, 4); // YYYY
+          default:
+            return d.toISOString().slice(0, 10);
+        }
+      };
+
+      // Agrupar ventas según el tipo de agrupación
+      const salesData = ordersWithPayments.map(order => {
+        // Usar la fecha del pago más reciente, o la fecha de creación de la orden como fallback
+        const paymentDate = order.payments && order.payments.length > 0 
+          ? order.payments[order.payments.length - 1].date 
+          : order.createdAt;
+        
+        return {
+          date: groupDateByType(new Date(paymentDate), selectedGroupBy),
+          amount: order.total || 0
+        };
+      });
+
+      // Agrupar ventas por período
+      const salesByPeriod: { [key: string]: number } = {};
+      salesData.forEach(sale => {
+        const period = sale.date;
+        salesByPeriod[period] = (salesByPeriod[period] || 0) + sale.amount;
+      });
+
+      // Obtener productos más vendidos - incluir pedidos pagados
+      const topProducts = await strapi.db.query('api::order-item.order-item').findMany({
+        where: {
+          order: {
+            paymentStatus: 'paid', // Cambiar a paymentStatus
+            createdAt: { $gte: startDate }
+          },
+          product: {
+            store: id
+          }
+        },
+        populate: ['product'],
+        select: ['quantity', 'subtotal']
+      });
+
+      // Agrupar productos vendidos
+      const productSales: { [key: string]: { quantity: number, revenue: number, product: any } } = {};
+      topProducts.forEach(item => {
+        if (item.product) {
+          const productId = item.product.id;
+          if (!productSales[productId]) {
+            productSales[productId] = {
+              quantity: 0,
+              revenue: 0,
+              product: item.product
+            };
+          }
+          productSales[productId].quantity += item.quantity;
+          productSales[productId].revenue += item.subtotal;
+        }
+      });
+
+      const topSellingProducts = Object.values(productSales)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 10);
+
+      return {
+        data: {
+          period,
+          dateRange: {
+            from: startDate,
+            to: now
+          },
+          products: {
+            total: totalProducts,
+            active: activeProducts,
+            lowStock: lowStockProducts,
+            outOfStock: outOfStockProducts
+          },
+          orders: {
+            total: totalOrders,
+            completed: completedOrders,
+            pending: pendingOrders,
+            completionRate: totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0
+          },
+          revenue: {
+            total: totalRevenue,
+            averageOrderValue: completedOrders > 0 ? totalRevenue / completedOrders : 0
+          },
+          charts: {
+            sales: Object.entries(salesByPeriod).map(([period, amount]) => ({
+              period,
+              amount
+            })),
+            groupBy: selectedGroupBy
+          },
+          topProducts: topSellingProducts
+        }
+      };
+    } catch (error) {
+      console.error('Error obteniendo analytics de tienda:', error);
+      return ctx.internalServerError('Error obteniendo analytics de la tienda');
+    }
+  },
+
+  // Obtener notificaciones de una tienda
+  async getStoreNotifications(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { page = 1, pageSize = 25, type, unreadOnly = false } = ctx.query;
+
+      if (!id) {
+        return ctx.badRequest('ID de tienda requerido');
+      }
+
+      // Verificar que la tienda existe y obtener el owner
+      const store = await strapi.entityService.findOne('api::store.store', id, {
+        populate: ['owner']
+      });
+      if (!store) {
+        return ctx.notFound('Tienda no encontrada');
+      }
+
+      // Construir filtros
+      const filters: any = {
+        recipientRole: 'tienda',
+        $or: [
+          { user: (store as any).owner?.id },
+          { recipientEmail: (store as any).owner?.email }
+        ]
+      };
+
+      if (type) {
+        filters.type = type;
+      }
+
+      if (unreadOnly === 'true') {
+        filters.notificationStatus = 'unread';
+      }
+
+      // Obtener notificaciones con paginación
+      const notifications = await strapi.entityService.findMany('api::notification.notification', {
+        filters,
+        sort: { createdAt: 'desc' },
+        populate: ['user', 'order'],
+        pagination: {
+          page: parseInt(page as string),
+          pageSize: parseInt(pageSize as string)
+        }
+      });
+
+      // Obtener total para paginación
+      const total = await strapi.db.query('api::notification.notification').count({
+        where: filters
+      });
+
+      // Obtener contador de no leídas
+      const unreadCount = await strapi.db.query('api::notification.notification').count({
+        where: {
+          ...filters,
+          notificationStatus: 'unread'
+        }
+      });
+
+      return {
+        data: notifications,
+        meta: {
+          pagination: {
+            page: parseInt(page as string),
+            pageSize: parseInt(pageSize as string),
+            pageCount: Math.ceil(total / parseInt(pageSize as string)),
+            total
+          },
+          unreadCount
+        }
+      };
+    } catch (error) {
+      console.error('Error obteniendo notificaciones de tienda:', error);
+      return ctx.internalServerError('Error obteniendo notificaciones de la tienda');
+    }
+  },
 }));

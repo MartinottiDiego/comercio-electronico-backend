@@ -11,7 +11,7 @@ export default class RecommendationEngine {
 
   async getRecommendations(userId: string, context: string, limit = 10) {
     try {
-      // Check cache first
+      
       const cached = await this.getCachedRecommendation(userId, context);
       if (cached) {
         return cached;
@@ -73,7 +73,6 @@ export default class RecommendationEngine {
         recommendations.push(...similar);
       }
 
-      // Remove duplicates and limit
       const uniqueRecommendations = Array.from(new Set(recommendations.map(r => r.id)))
         .map(id => recommendations.find(r => r.id === id))
         .slice(0, limit);
@@ -93,11 +92,8 @@ export default class RecommendationEngine {
 
       const recommendations = [];
       
-      // Get similar products
       const similar = await this.getSimilarProducts(productId, limit / 2);
       recommendations.push(...similar);
-
-      // Get "frequently bought together"
       const boughtTogether = await this.userBehaviorService.getFrequentlyBoughtTogether(productId, limit / 2);
       if (boughtTogether.length > 0) {
         const products = await this.strapi.entityService.findMany('api::product.product', {
@@ -107,7 +103,7 @@ export default class RecommendationEngine {
         recommendations.push(...products);
       }
 
-      // Remove duplicates and limit
+      
       const uniqueRecommendations = Array.from(new Set(recommendations.map(r => r.id)))
         .map(id => recommendations.find(r => r.id === id))
         .slice(0, limit);
