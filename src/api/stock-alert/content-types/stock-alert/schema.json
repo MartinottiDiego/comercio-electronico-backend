@@ -1,0 +1,79 @@
+{
+  "kind": "collectionType",
+  "collectionName": "stock_alerts",
+  "info": {
+    "singularName": "stock-alert",
+    "pluralName": "stock-alerts",
+    "displayName": "Stock Alert"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "required": true
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store",
+      "required": true
+    },
+    "currentStock": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    "threshold": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    "alertType": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "low_stock",
+        "out_of_stock",
+        "critical_stock"
+      ]
+    },
+    "stockStatus": {
+      "type": "enumeration",
+      "required": true,
+      "default": "active",
+      "enum": [
+        "active",
+        "acknowledged",
+        "resolved",
+        "dismissed"
+      ]
+    },
+    "notificationSent": {
+      "type": "boolean",
+      "default": false
+    },
+    "notificationSentAt": {
+      "type": "datetime"
+    },
+    "acknowledgedAt": {
+      "type": "datetime"
+    },
+    "acknowledgedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "resolvedAt": {
+      "type": "datetime"
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+}
+

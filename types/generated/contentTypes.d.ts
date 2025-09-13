@@ -1818,6 +1818,72 @@ export interface ApiReviewReview extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiStockAlertStockAlert extends Struct.CollectionTypeSchema {
+  collectionName: 'stock_alerts';
+  info: {
+    displayName: 'Stock Alert';
+    pluralName: 'stock-alerts';
+    singularName: 'stock-alert';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    acknowledgedAt: Schema.Attribute.DateTime;
+    acknowledgedBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    alertType: Schema.Attribute.Enumeration<
+      ['low_stock', 'out_of_stock', 'critical_stock']
+    > &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currentStock: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::stock-alert.stock-alert'
+    > &
+      Schema.Attribute.Private;
+    metadata: Schema.Attribute.JSON;
+    notificationSent: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    notificationSentAt: Schema.Attribute.DateTime;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'> &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    resolvedAt: Schema.Attribute.DateTime;
+    stockStatus: Schema.Attribute.Enumeration<
+      ['active', 'acknowledged', 'resolved', 'dismissed']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'> &
+      Schema.Attribute.Required;
+    threshold: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiStockReservationStockReservation
   extends Struct.CollectionTypeSchema {
   collectionName: 'stock_reservations';
@@ -2542,6 +2608,7 @@ declare module '@strapi/strapi' {
       'api::refund.refund': ApiRefundRefund;
       'api::report.report': ApiReportReport;
       'api::review.review': ApiReviewReview;
+      'api::stock-alert.stock-alert': ApiStockAlertStockAlert;
       'api::stock-reservation.stock-reservation': ApiStockReservationStockReservation;
       'api::store.store': ApiStoreStore;
       'api::user-behavior.user-behavior': ApiUserBehaviorUserBehavior;
