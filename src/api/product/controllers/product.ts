@@ -171,11 +171,13 @@ export default factories.createCoreController('api::product.product', ({ strapi 
 
             // Debug: Log detallado de todos los campos recibidos
             console.log('=== DEBUG: Campos recibidos del frontend ===');
-            console.log('productData completo:', JSON.stringify(productData, null, 2));
+            console.log('Body completo:', JSON.stringify(ctx.request.body, null, 2));
+            console.log('productData:', JSON.stringify(productData, null, 2));
+            console.log('variants:', JSON.stringify(variants, null, 2));
             console.log('Campos de imagen:');
-            console.log('- photos:', productData.photos);
-            console.log('- Media:', productData.Media);
-            console.log('- thumbnail:', productData.thumbnail);
+            console.log('- photos:', productData?.photos);
+            console.log('- Media:', productData?.Media);
+            console.log('- thumbnail:', productData?.thumbnail);
             console.log('==============================================');
 
       if (!productData) {
@@ -204,6 +206,7 @@ export default factories.createCoreController('api::product.product', ({ strapi 
       }
 
       // Crear el producto con variantes usando el service
+      console.log('🚀 Iniciando creación del producto...');
       const result = await strapi.service('api::product.product').createProductWithVariants(
         productData,
         variants || []
@@ -219,7 +222,9 @@ export default factories.createCoreController('api::product.product', ({ strapi 
         message: 'Producto creado exitosamente'
       };
     } catch (error) {
-      console.error('Error creating product with variants:', error);
+      console.error('❌ Error creating product with variants:', error);
+      console.error('❌ Error details:', error.message);
+      console.error('❌ Error stack:', error.stack);
       return ctx.internalServerError('Error interno creando producto con variantes');
     }
   },
