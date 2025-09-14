@@ -169,16 +169,6 @@ export default factories.createCoreController('api::product.product', ({ strapi 
     try {
       const { productData, variants } = ctx.request.body;
 
-            // Debug: Log detallado de todos los campos recibidos
-            console.log('=== DEBUG: Campos recibidos del frontend ===');
-            console.log('Body completo:', JSON.stringify(ctx.request.body, null, 2));
-            console.log('productData:', JSON.stringify(productData, null, 2));
-            console.log('variants:', JSON.stringify(variants, null, 2));
-            console.log('Campos de imagen:');
-            console.log('- photos:', productData?.photos);
-            console.log('- Media:', productData?.Media);
-            console.log('- thumbnail:', productData?.thumbnail);
-            console.log('==============================================');
 
       if (!productData) {
         return ctx.badRequest('Datos del producto requeridos');
@@ -206,25 +196,17 @@ export default factories.createCoreController('api::product.product', ({ strapi 
       }
 
       // Crear el producto con variantes usando el service
-      console.log('🚀 Iniciando creación del producto...');
       const result = await strapi.service('api::product.product').createProductWithVariants(
         productData,
         variants || []
       );
-
-      // Debug: Log del resultado creado
-      console.log('=== DEBUG: Producto creado ===');
-      console.log('Producto creado:', JSON.stringify(result.product, null, 2));
-      console.log('==============================');
 
       return {
         data: result,
         message: 'Producto creado exitosamente'
       };
     } catch (error) {
-      console.error('❌ Error creating product with variants:', error);
-      console.error('❌ Error details:', error.message);
-      console.error('❌ Error stack:', error.stack);
+      console.error('Error creating product with variants:', error);
       return ctx.internalServerError('Error interno creando producto con variantes');
     }
   },

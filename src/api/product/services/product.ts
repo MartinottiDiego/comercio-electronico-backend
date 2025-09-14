@@ -232,14 +232,6 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
         attempts++;
       }
       
-      // Debug: Log de los datos que se van a guardar
-      console.log('=== DEBUG: Datos a guardar en DB ===');
-      console.log('productData recibido:', JSON.stringify(productData, null, 2));
-      console.log('Campos de imagen en productData:');
-      console.log('- Media:', productData.Media);
-      console.log('- thumbnail:', productData.thumbnail);
-      console.log('- photos:', productData.photos);
-      console.log('=====================================');
 
       // 1. Separar campos de media del resto de datos
       const { Media, thumbnail, ...productDataWithoutMedia } = productData;
@@ -274,11 +266,6 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
           data: updateData
         });
 
-        // Debug: Log de actualización de media
-        console.log('=== DEBUG: Media actualizada ===');
-        console.log('Producto ID:', product.id);
-        console.log('Media actualizada:', updateData);
-        console.log('==============================');
       }
 
       // 4. Obtener el producto final con todas las relaciones
@@ -290,10 +277,6 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
         }
       });
 
-      // Debug: Log del producto final con relaciones
-      console.log('=== DEBUG: Producto final con relaciones ===');
-      console.log('Producto final:', JSON.stringify(finalProduct, null, 2));
-      console.log('============================================');
 
       // 2. Crear las variantes si existen
       if (variantsData.length > 0) {
