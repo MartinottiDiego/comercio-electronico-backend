@@ -21,6 +21,24 @@ export default {
         policies: [],
         middlewares: []
       }
+    },
+    {
+      method: 'POST',
+      path: '/products/with-variants',
+      handler: 'product.createWithVariants',
+      config: {
+        policies: [],
+        middlewares: []
+      }
+    },
+    {
+      method: 'PUT',
+      path: '/products/:id/with-variants',
+      handler: 'product.updateWithVariants',
+      config: {
+        policies: [],
+        middlewares: []
+      }
     }
   ]
 };
