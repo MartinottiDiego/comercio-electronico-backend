@@ -9,6 +9,7 @@ export default {
       path: '/product-variants/product/:productId',
       handler: 'product-variant.findByProduct',
       config: {
+        auth: false,
         policies: [],
         middlewares: []
       }
@@ -18,6 +19,7 @@ export default {
       path: '/product-variants/validate-purchase',
       handler: 'product-variant.validateForPurchase',
       config: {
+        auth: false,
         policies: [],
         middlewares: []
       }

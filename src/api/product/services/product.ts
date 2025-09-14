@@ -213,7 +213,24 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
   async createProductWithVariants(productData: any, variantsData: any[]): Promise<any> {
     try {
       // Generar SKU automático para el producto principal si no se proporciona
-      const productSKU = productData.sku || this.generateProductSKU(productData.title);
+      let productSKU = productData.sku || this.generateProductSKU(productData.title);
+      
+      // Verificar si el SKU ya existe y generar uno nuevo si es necesario
+      let attempts = 0;
+      while (attempts < 5) {
+        const existingProduct = await strapi.entityService.findMany('api::product.product', {
+          filters: { sku: productSKU },
+          limit: 1
+        });
+        
+        if (existingProduct.length === 0) {
+          break; // SKU único encontrado
+        }
+        
+        // Generar nuevo SKU
+        productSKU = this.generateProductSKU(productData.title);
+        attempts++;
+      }
       
       // Debug: Log de los datos que se van a guardar
       console.log('=== DEBUG: Datos a guardar en DB ===');
@@ -237,17 +254,22 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
       });
 
       // 3. Actualizar el producto con las relaciones de media si existen
-      if (Media && Media.length > 0 || thumbnail) {
-        const updateData: any = {};
-        
-        if (Media && Media.length > 0) {
-          updateData.Media = Media;
+      const updateData: any = {};
+      
+      // Filtrar imágenes vacías
+      if (Media && Media.length > 0) {
+        const validMedia = Media.filter((mediaId: any) => mediaId && mediaId.toString().trim() !== '');
+        if (validMedia.length > 0) {
+          updateData.Media = validMedia;
         }
-        
-        if (thumbnail) {
-          updateData.thumbnail = thumbnail;
-        }
+      }
+      
+      if (thumbnail && thumbnail.toString().trim() !== '') {
+        updateData.thumbnail = thumbnail;
+      }
 
+      // Solo actualizar si hay datos válidos
+      if (Object.keys(updateData).length > 0) {
         await strapi.entityService.update('api::product.product', product.id, {
           data: updateData
         });
@@ -381,10 +403,11 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
     const base = productTitle
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '')
-      .substring(0, 8);
+      .substring(0, 4);
     
-    const timestamp = Date.now().toString().slice(-6);
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
     
-    return `PROD-${base}-${timestamp}`;
+    return `PROD-${base}-${timestamp}-${random}`;
   }
 }));

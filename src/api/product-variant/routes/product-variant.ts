@@ -1,25 +1,7 @@
 /**
- * product-variant router
+ * product-variant routes
  */
 
 import { factories } from '@strapi/strapi';
 
-export default factories.createCoreRouter('api::product-variant.product-variant', {
-  config: {
-    find: {
-      middlewares: []
-    },
-    findOne: {
-      middlewares: []
-    },
-    create: {
-      middlewares: []
-    },
-    update: {
-      middlewares: []
-    },
-    delete: {
-      middlewares: []
-    }
-  }
-});
+export default factories.createCoreRouter('api::product-variant.product-variant');
