@@ -1238,6 +1238,7 @@ export interface ApiProductVariantProductVariant
         },
         number
       >;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     reservedStock: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<

@@ -76,6 +76,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         description: data.description,
         specialty: data.specialty,
         location: data.location,
+        founded: data.founded, // Incluir fecha de founded del frontend
         slug: slug, // Enviar slug único
         owner: user.id, // Usar el ID numérico del usuario
         storeStatus: 'pending',
@@ -89,19 +90,12 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         storeData.image = data.image;
       }
 
-      console.log('=== DEBUG store creation ===');
-      console.log('Original name:', data.name);
-      console.log('Final name:', finalName);
-      console.log('Generated slug:', slug);
-      console.log('storeData:', JSON.stringify(storeData, null, 2));
-
       // Crear la tienda usando la API de Strapi 5
-      console.log('=== ANTES DE CREAR ===');
+      
       const store = await strapi.entityService.create('api::store.store', {
         data: storeData,
         populate: { owner: true, image: true }
       });
-      console.log('=== DESPUÉS DE CREAR ===');
 
       return { data: store };
     } catch (error) {
@@ -146,7 +140,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   // Nuevo método para top-rated stores
   async getTopRated(ctx) {
     try {
-      console.log('[StoresSlider] Controller getTopRated iniciado');
+      
       
       // Obtener todas las stores primero para probar
       const allStores = await strapi.entityService.findMany('api::store.store', {
@@ -154,7 +148,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         limit: 8,
       });
 
-      console.log('[StoresSlider] Stores obtenidas:', allStores.length);
+      
 
       const response = {
         data: allStores,
