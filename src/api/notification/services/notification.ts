@@ -56,6 +56,10 @@ export default factories.createCoreService('api::notification.notification', ({ 
         emailSent = await this.sendStoreRejectionEmail(notification);
       } else if (notification.type === 'store_approval') {
         emailSent = await this.sendStoreApprovalEmail(notification);
+      } else if (notification.type === 'store_pending' && notification.recipientRole === 'tienda') {
+        emailSent = await this.sendStorePendingEmail(notification);
+      } else if (notification.type === 'store_pending' && notification.recipientRole === 'admin') {
+        emailSent = await this.sendAdminStorePendingEmail(notification);
       } else {
         emailSent = await emailService.sendNotificationEmail(notification);
       }
@@ -152,6 +156,97 @@ export default factories.createCoreService('api::notification.notification', ({ 
       
     } catch (error) {
       console.error('❌ Error enviando email de aprobación de tienda:', error);
+      return false;
+    }
+  },
+
+  async sendStorePendingEmail(notification) {
+    try {
+      const { generateStorePendingEmail } = require('../../../lib/email-templates/store-pending');
+      
+      // Extraer información de la tienda del mensaje
+      const message = notification.message;
+      const storeNameMatch = message.match(/tienda "([^"]+)"/);
+      const specialtyMatch = message.match(/Especialidad: ([^.]+)/);
+      
+      const storeName = storeNameMatch ? storeNameMatch[1] : 'tu tienda';
+      const specialty = specialtyMatch ? specialtyMatch[1].trim() : 'No especificada';
+      
+      // Obtener nombre del propietario
+      const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { email: notification.recipientEmail },
+        populate: ['profile']
+      });
+      
+      const ownerName = user?.profile?.firstName 
+        ? `${user.profile.firstName} ${user.profile.lastName || ''}`.trim()
+        : user?.username || 'Usuario';
+      
+      console.log('📧 Store Pending Email - Datos extraídos:', {
+        storeName,
+        specialty,
+        ownerName,
+        message: notification.message
+      });
+      
+      // Generar HTML del email
+      const htmlContent = generateStorePendingEmail(storeName, ownerName, specialty);
+      
+      // Enviar email usando el servicio de email
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+      
+      return await emailService.sendEmail({
+        to: notification.recipientEmail,
+        subject: notification.title,
+        html: htmlContent,
+        text: notification.message
+      });
+    } catch (error) {
+      console.error('❌ Error enviando email de tienda pendiente:', error);
+      return false;
+    }
+  },
+
+  async sendAdminStorePendingEmail(notification) {
+    try {
+      const { generateAdminStorePendingEmail } = require('../../../lib/email-templates/admin-store-pending');
+      
+      // Extraer información de la tienda del mensaje
+      const message = notification.message;
+      const storeNameMatch = message.match(/La tienda "([^"]+)"/);
+      const ownerEmailMatch = message.match(/de ([^\s]+)/);
+      const specialtyMatch = message.match(/Especialidad: ([^.]+)/);
+      
+      const storeName = storeNameMatch ? storeNameMatch[1] : 'Nueva tienda';
+      const ownerEmail = ownerEmailMatch ? ownerEmailMatch[1] : 'usuario@ejemplo.com';
+      const specialty = specialtyMatch ? specialtyMatch[1].trim() : 'No especificada';
+      
+      // Obtener información del propietario
+      const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { email: ownerEmail },
+        populate: ['profile']
+      });
+      
+      const ownerName = user?.profile?.firstName 
+        ? `${user.profile.firstName} ${user.profile.lastName || ''}`.trim()
+        : user?.username || 'Usuario';
+      
+      // Generar HTML del email
+      const htmlContent = generateAdminStorePendingEmail(storeName, ownerName, ownerEmail, specialty, 'No especificada');
+      
+      // Enviar email usando el servicio de email
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+      
+      return await emailService.sendEmail({
+        to: notification.recipientEmail,
+        subject: notification.title,
+        html: htmlContent,
+        text: notification.message
+      });
+    } catch (error) {
+      console.error('❌ Error enviando email de tienda pendiente a admin:', error);
       return false;
     }
   },

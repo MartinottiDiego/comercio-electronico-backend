@@ -97,6 +97,60 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         populate: { owner: true, image: true }
       });
 
+      // Enviar notificación y email a todos los admins sobre la nueva tienda pendiente
+      try {
+        const notificationService = strapi.service('api::notification.notification');
+        const { findAdminUsers } = require('../../../lib/helpers/admin-users');
+        
+        // Buscar todos los usuarios con rol admin
+        const adminUsers = await findAdminUsers();
+        
+        if (adminUsers.length === 0) {
+          console.warn('⚠️ No se encontraron usuarios admin para enviar notificación');
+          // Continuar con la creación de la tienda aunque no haya admins
+        }
+        
+        // Enviar notificación a cada admin
+        const notificationPromises = adminUsers.map(adminUser => 
+          notificationService.createNotification({
+            type: 'store_pending',
+            title: 'Nueva tienda pendiente de aprobación',
+            message: `La tienda "${store.name}" de ${user.email} está esperando aprobación. Especialidad: ${store.specialty || 'No especificada'}`,
+            priority: 'high',
+            recipientEmail: adminUser.email,
+            recipientRole: 'admin',
+            actionUrl: `/admin/tiendas/${store.documentId}`,
+            actionText: 'Revisar tienda'
+          })
+        );
+        
+        await Promise.all(notificationPromises);
+        console.log(`✅ Notificaciones enviadas a ${adminUsers.length} administradores`);
+        
+      } catch (notificationError) {
+        console.error('❌ Error enviando notificaciones de tienda pendiente:', notificationError);
+        // No fallar la operación si la notificación falla
+      }
+
+      // Enviar notificación y email al usuario confirmando que su tienda será revisada
+      try {
+        const notificationService = strapi.service('api::notification.notification');
+        
+        await notificationService.createNotification({
+          type: 'store_pending',
+          title: 'Tu tienda está siendo revisada',
+          message: `Hemos recibido tu solicitud de tienda "${store.name}". Nuestro equipo la está revisando y te notificaremos en 1-3 días hábiles.`,
+          priority: 'normal',
+          recipientEmail: user.email,
+          recipientRole: 'tienda',
+          actionUrl: '/dashboard/tienda',
+          actionText: 'Ver estado de mi tienda'
+        });
+      } catch (notificationError) {
+        console.error('Error enviando notificación de confirmación al usuario:', notificationError);
+        // No fallar la operación si la notificación falla
+      }
+
       return { data: store };
     } catch (error) {
       console.error('Error creando tienda:', error);
@@ -223,6 +277,20 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         },
       });
 
+      // Actualizar el rol del propietario de la tienda a 'tienda' en su profile
+      try {
+        await strapi.db.query('api::profile.profile').update({
+          where: { users_permissions_user: store.owner.id },
+          data: {
+            roleUser: 'tienda' // Cambiar el rol del usuario a 'tienda' en el profile
+          }
+        });
+        console.log(`✅ Rol del usuario ${store.owner.email} actualizado a 'tienda' en su profile`);
+      } catch (roleUpdateError) {
+        console.error('❌ Error actualizando rol del usuario:', roleUpdateError);
+        // No fallar la operación si la actualización del rol falla
+      }
+
       // Enviar notificación al propietario de la tienda
       try {
         const notificationService = strapi.service('api::notification.notification');
@@ -238,6 +306,35 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         });
       } catch (notificationError) {
         console.error('Error enviando notificación de aprobación:', notificationError);
+        // No fallar la operación si la notificación falla
+      }
+
+      // Enviar notificación de confirmación a todos los admins
+      try {
+        const notificationService = strapi.service('api::notification.notification');
+        const { findAdminUsers } = require('../../../lib/helpers/admin-users');
+        
+        const adminUsers = await findAdminUsers();
+        
+        if (adminUsers.length > 0) {
+          const notificationPromises = adminUsers.map(adminUser => 
+            notificationService.createNotification({
+              type: 'system',
+              title: 'Tienda aprobada exitosamente',
+              message: `La tienda "${store.name}" ha sido aprobada y está ahora activa en la plataforma.`,
+              priority: 'normal',
+              recipientEmail: adminUser.email,
+              recipientRole: 'admin',
+              actionUrl: `/admin/tiendas/${store.documentId}`,
+              actionText: 'Ver tienda'
+            })
+          );
+          
+          await Promise.all(notificationPromises);
+          console.log(`✅ Notificaciones de confirmación enviadas a ${adminUsers.length} administradores`);
+        }
+      } catch (notificationError) {
+        console.error('❌ Error enviando notificaciones de confirmación a admins:', notificationError);
         // No fallar la operación si la notificación falla
       }
 
@@ -316,6 +413,20 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         },
       });
 
+      // Revertir el rol del propietario de la tienda a 'comprador' en su profile
+      try {
+        await strapi.db.query('api::profile.profile').update({
+          where: { users_permissions_user: store.owner.id },
+          data: {
+            roleUser: 'comprador' // Revertir el rol del usuario a 'comprador' en el profile
+          }
+        });
+        console.log(`✅ Rol del usuario ${store.owner.email} revertido a 'comprador' en su profile`);
+      } catch (roleUpdateError) {
+        console.error('❌ Error revirtiendo rol del usuario:', roleUpdateError);
+        // No fallar la operación si la actualización del rol falla
+      }
+
       // Enviar notificación al propietario de la tienda
       try {
         const notificationService = strapi.service('api::notification.notification');
@@ -331,6 +442,35 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         });
       } catch (notificationError) {
         console.error('Error enviando notificación de rechazo:', notificationError);
+        // No fallar la operación si la notificación falla
+      }
+
+      // Enviar notificación de confirmación a todos los admins
+      try {
+        const notificationService = strapi.service('api::notification.notification');
+        const { findAdminUsers } = require('../../../lib/helpers/admin-users');
+        
+        const adminUsers = await findAdminUsers();
+        
+        if (adminUsers.length > 0) {
+          const notificationPromises = adminUsers.map(adminUser => 
+            notificationService.createNotification({
+              type: 'system',
+              title: 'Tienda rechazada',
+              message: `La tienda "${store.name}" ha sido rechazada. Motivo: ${rejectionReason || 'No especificado'}`,
+              priority: 'normal',
+              recipientEmail: adminUser.email,
+              recipientRole: 'admin',
+              actionUrl: `/admin/tiendas/${store.documentId}`,
+              actionText: 'Ver tienda'
+            })
+          );
+          
+          await Promise.all(notificationPromises);
+          console.log(`✅ Notificaciones de confirmación enviadas a ${adminUsers.length} administradores`);
+        }
+      } catch (notificationError) {
+        console.error('❌ Error enviando notificaciones de confirmación a admins:', notificationError);
         // No fallar la operación si la notificación falla
       }
 

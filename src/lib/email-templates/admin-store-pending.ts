@@ -1,11 +1,11 @@
-export function generateStoreApprovalEmail(storeName: string, ownerName: string) {
+export function generateAdminStorePendingEmail(storeName: string, ownerName: string, ownerEmail: string, specialty: string, location: string) {
   return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>¡Tu tienda ha sido aprobada! - WaaZaar</title>
+    <title>Nueva tienda pendiente de aprobación - WaaZaar Admin</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -37,23 +37,23 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
         .content {
             padding: 30px;
         }
-        .success-box {
-            background-color: #f0fdf4;
-            border: 1px solid #bbf7d0;
+        .alert-box {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
             border-radius: 6px;
             padding: 20px;
             margin: 20px 0;
             text-align: center;
         }
-        .success-title {
-            color: #16a34a;
+        .alert-title {
+            color: #dc2626;
             font-weight: 600;
-            font-size: 20px;
+            font-size: 18px;
             margin: 0 0 10px 0;
         }
-        .success-text {
-            color: #15803d;
-            font-size: 16px;
+        .alert-text {
+            color: #b91c1c;
+            font-size: 14px;
             margin: 0;
         }
         .info-box {
@@ -115,6 +115,7 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
             border-radius: 6px;
             font-weight: 600;
             font-size: 14px;
+            margin: 5px;
         }
         .btn:hover {
             background-color: #16a34a;
@@ -151,53 +152,71 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
 <body>
     <div class="container">
         <div class="header">
-            <h1>WaaZaar</h1>
+            <h1>WaaZaar Admin</h1>
         </div>
         
         <div class="content">
-            <h2 style="color: #374151; margin: 0 0 20px 0;">¡Hola ${ownerName}!</h2>
-            
-            <div class="success-box">
-                <h3 class="success-title">¡Felicitaciones! Tu tienda ha sido aprobada</h3>
-                <p class="success-text">Tu tienda <strong>"${storeName}"</strong> ya está activa en WaaZaar.</p>
+            <div class="alert-box">
+                <h3 class="alert-title">Nueva tienda pendiente de aprobación</h3>
+                <p class="alert-text">Se ha recibido una nueva solicitud de tienda que requiere tu revisión.</p>
             </div>
             
             <div class="info-box">
-                <h4 class="info-title">Detalles de tu tienda</h4>
+                <h4 class="info-title">Información de la tienda</h4>
                 <div class="info-item">
                     <span class="info-label">Nombre de la tienda:</span>
                     <span class="info-value">${storeName}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Estado:</span>
-                    <span class="info-value">Aprobada y activa</span>
+                    <span class="info-label">Especialidad:</span>
+                    <span class="info-value">${specialty || 'No especificada'}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Fecha de aprobación:</span>
+                    <span class="info-label">Ubicación:</span>
+                    <span class="info-value">${location || 'No especificada'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Estado:</span>
+                    <span class="info-value">Pendiente de aprobación</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Fecha de solicitud:</span>
                     <span class="info-value">${new Date().toLocaleDateString('es-ES')}</span>
                 </div>
             </div>
             
+            <div class="info-box">
+                <h4 class="info-title">Información del propietario</h4>
+                <div class="info-item">
+                    <span class="info-label">Nombre:</span>
+                    <span class="info-value">${ownerName}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">${ownerEmail}</span>
+                </div>
+            </div>
+            
             <div class="action-box">
-                <h4 class="action-title">¡Comienza a vender ahora!</h4>
+                <h4 class="action-title">Acción requerida</h4>
                 <p class="action-text">
-                    Accede a tu panel de administración para gestionar tu tienda y productos.
+                    Revisa la tienda y decide si aprobarla o rechazarla. 
+                    Si la rechazas, proporciona un motivo claro al propietario.
                 </p>
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/tienda" class="btn">
-                    Ir a mi tienda
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/tiendas" class="btn">
+                    Revisar tienda
                 </a>
             </div>
             
-            <p style="color: #6b7280; margin: 20px 0 0 0; font-size: 14px;">
-                Si tienes alguna pregunta o necesitas ayuda, no dudes en contactar con nuestro 
-                equipo de soporte. ¡Estamos aquí para ayudarte a tener éxito!
+            <p style="color: #6b7280; margin: 20px 0 0 0; font-size: 12px;">
+                <strong>Nota:</strong> Las tiendas pendientes deben ser revisadas en un plazo máximo de 3 días hábiles.
             </p>
         </div>
         
         <div class="footer">
-            <p><strong>Equipo WaaZaar</strong></p>
+            <p><strong>Panel de Administración WaaZaar</strong></p>
             <p>
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}">Visitar WaaZaar</a>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin">Dashboard Admin</a>
             </p>
         </div>
     </div>
@@ -205,11 +224,3 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
 </html>
   `;
 }
-
-
-
-
-
-
-
-

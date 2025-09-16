@@ -897,6 +897,7 @@ export interface ApiNotificationNotification
         'store_rejection',
         'store_approval',
         'store_blocked',
+        'store_pending',
       ]
     > &
       Schema.Attribute.Required;

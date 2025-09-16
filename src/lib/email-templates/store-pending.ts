@@ -1,11 +1,11 @@
-export function generateStoreApprovalEmail(storeName: string, ownerName: string) {
+export function generateStorePendingEmail(storeName: string, ownerName: string, specialty: string) {
   return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>¡Tu tienda ha sido aprobada! - WaaZaar</title>
+    <title>Tu tienda está siendo revisada - WaaZaar</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -36,25 +36,6 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
         }
         .content {
             padding: 30px;
-        }
-        .success-box {
-            background-color: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 6px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        .success-title {
-            color: #16a34a;
-            font-weight: 600;
-            font-size: 20px;
-            margin: 0 0 10px 0;
-        }
-        .success-text {
-            color: #15803d;
-            font-size: 16px;
-            margin: 0;
         }
         .info-box {
             background-color: #f0fdf4;
@@ -87,37 +68,22 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
             color: #15803d;
             font-weight: 600;
         }
-        .action-box {
+        .message {
             background-color: #f8f9fa;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
+            border-left: 4px solid #22c55e;
             padding: 20px;
             margin: 20px 0;
-            text-align: center;
         }
-        .action-title {
+        .message-title {
             color: #374151;
             font-weight: 600;
             font-size: 16px;
             margin: 0 0 10px 0;
         }
-        .action-text {
+        .message-text {
             color: #6b7280;
             font-size: 14px;
-            margin: 0 0 15px 0;
-        }
-        .btn {
-            display: inline-block;
-            background-color: #22c55e;
-            color: white;
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .btn:hover {
-            background-color: #16a34a;
+            margin: 0;
         }
         .footer {
             background-color: #f8f9fa;
@@ -157,9 +123,12 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
         <div class="content">
             <h2 style="color: #374151; margin: 0 0 20px 0;">¡Hola ${ownerName}!</h2>
             
-            <div class="success-box">
-                <h3 class="success-title">¡Felicitaciones! Tu tienda ha sido aprobada</h3>
-                <p class="success-text">Tu tienda <strong>"${storeName}"</strong> ya está activa en WaaZaar.</p>
+            <div class="message">
+                <h3 class="message-title">Tu tienda está siendo revisada</h3>
+                <p class="message-text">
+                    Hemos recibido tu solicitud de tienda y nuestro equipo la está revisando cuidadosamente. 
+                    Te notificaremos en 1-3 días hábiles.
+                </p>
             </div>
             
             <div class="info-box">
@@ -169,28 +138,21 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
                     <span class="info-value">${storeName}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Estado:</span>
-                    <span class="info-value">Aprobada y activa</span>
+                    <span class="info-label">Especialidad:</span>
+                    <span class="info-value">${specialty || 'No especificada'}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Fecha de aprobación:</span>
+                    <span class="info-label">Estado actual:</span>
+                    <span class="info-value">En revisión</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Fecha de solicitud:</span>
                     <span class="info-value">${new Date().toLocaleDateString('es-ES')}</span>
                 </div>
             </div>
             
-            <div class="action-box">
-                <h4 class="action-title">¡Comienza a vender ahora!</h4>
-                <p class="action-text">
-                    Accede a tu panel de administración para gestionar tu tienda y productos.
-                </p>
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/tienda" class="btn">
-                    Ir a mi tienda
-                </a>
-            </div>
-            
             <p style="color: #6b7280; margin: 20px 0 0 0; font-size: 14px;">
-                Si tienes alguna pregunta o necesitas ayuda, no dudes en contactar con nuestro 
-                equipo de soporte. ¡Estamos aquí para ayudarte a tener éxito!
+                Gracias por elegir WaaZaar. ¡Esperamos verte pronto como parte de nuestra comunidad de vendedores!
             </p>
         </div>
         
@@ -205,11 +167,3 @@ export function generateStoreApprovalEmail(storeName: string, ownerName: string)
 </html>
   `;
 }
-
-
-
-
-
-
-
-
