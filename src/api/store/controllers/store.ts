@@ -183,12 +183,51 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
   // Método existente extendido
   async find(ctx) {
-    // Lógica existente del core controller
-    const data = await strapi.entityService.findMany('api::store.store', {
-      ...ctx.query,
-      populate: ['image']
-    });
-    return { data };
+    try {
+      // ✅ ARREGLAR: Parsear manualmente el query string para obtener el email
+      const queryString = ctx.request.url.split('?')[1] || '';
+      const urlParams = new URLSearchParams(queryString);
+      
+      // Buscar el parámetro de filtro de email del owner
+      let ownerEmail = null;
+      for (const [key, value] of urlParams.entries()) {
+        if (key.includes('owner') && key.includes('email') && key.includes('$eq')) {
+          ownerEmail = value;
+          break;
+        }
+      }
+      
+      if (ownerEmail) {
+        // Si hay filtro por email, buscar la tienda del usuario específico
+        const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+          where: { email: ownerEmail },
+          populate: ['profile']
+        });
+        
+        if (!user) {
+          return { data: [] };
+        }
+        
+        const stores = await strapi.entityService.findMany('api::store.store', {
+          filters: {
+            owner: user.id
+          },
+          populate: ['image', 'owner']
+        });
+        
+        return { data: stores };
+      }
+      
+      // Si no hay filtro por email, devolver todas las tiendas (para admin)
+      const data = await strapi.entityService.findMany('api::store.store', {
+        ...ctx.query,
+        populate: ['image', 'owner']
+      });
+      return { data };
+    } catch (error) {
+      console.error('Error en find stores:', error);
+      return ctx.badRequest('Error al obtener tiendas');
+    }
   },
 
   // Nuevo método para top-rated stores
