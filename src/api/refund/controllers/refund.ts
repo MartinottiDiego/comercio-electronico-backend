@@ -7,7 +7,62 @@ import { Context } from 'koa';
 
 export default factories.createCoreController('api::refund.refund', ({ strapi }) => ({
   /**
-   * Crear una nueva solicitud de reembolso
+   * Crear reembolsos por tienda - Nueva función robusta
+   */
+  async createRefundRequestByStore(ctx) {
+    try {
+      const { user } = ctx.state;
+      
+      console.log('🔍 [CONTROLLER] createRefundRequestByStore - Usuario:', {
+        id: user?.id,
+        email: user?.email
+      });
+      
+      if (!user) {
+        return ctx.unauthorized('Usuario no autenticado');
+      }
+
+      const { orderId, reason, description, amount } = ctx.request.body;
+      
+      console.log('🔍 [CONTROLLER] Datos recibidos del frontend:', {
+        orderId,
+        reason,
+        description,
+        amount,
+        body: ctx.request.body
+      });
+
+      if (!orderId || !reason) {
+        return ctx.badRequest('orderId y reason son requeridos');
+      }
+
+      console.log('🔍 [CONTROLLER] Llamando al servicio con:', {
+        userId: user.id,
+        orderId,
+        refundData: { reason, description: description || 'Solicitud de reembolso', amount }
+      });
+
+      const result = await strapi.service('api::refund.refund').createRefundRequestByStore(
+        user.id,
+        orderId,
+        { reason, description: description || 'Solicitud de reembolso', amount }
+      );
+
+      console.log('🔍 [CONTROLLER] Resultado del servicio:', result);
+
+      return ctx.send({
+        success: true,
+        data: result,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('❌ [CONTROLLER] Error creating refund request by store:', error);
+      return ctx.internalServerError('Error creando solicitud de reembolso por tienda');
+    }
+  },
+
+  /**
+   * Crear una nueva solicitud de reembolso (función original)
    */
   async createRefundRequest(ctx) {
     try {

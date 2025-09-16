@@ -7,12 +7,249 @@ import { stripe } from '../../../../config/stripe';
 
 export default factories.createCoreService('api::refund.refund', ({ strapi }) => ({
   /**
-   * Crear una nueva solicitud de reembolso con validaciones completas
+   * Crear reembolsos por tienda - Nueva función robusta para manejar múltiples tiendas
+   */
+  async createRefundRequestByStore(userId: string | number, orderId: string | number, refundData: any) {
+    try {
+      // 1. Convertir documentId a id numérico si es necesario
+      let numericOrderId = orderId;
+      if (typeof orderId === 'string' && orderId.length > 10) {
+        // Es un documentId, intentar usar directamente
+        try {
+          const orderByDocumentId = await strapi.entityService.findOne('api::order.order', orderId, {
+            populate: ['payments', 'user']
+          });
+          if (!orderByDocumentId) {
+            throw new Error('Orden no encontrada');
+          }
+          numericOrderId = orderByDocumentId.id;
+        } catch (error) {
+          throw new Error('Orden no encontrada');
+        }
+      }
+
+      // 2. Verificar que la orden existe y pertenece al usuario
+      const order = await strapi.entityService.findOne('api::order.order', numericOrderId, {
+        populate: [
+          'payments', 
+          'user',
+          'order_items',
+          'order_items.product',
+          'order_items.product.store'
+        ]
+      });
+
+      if (!order) {
+        throw new Error('Orden no encontrada');
+      }
+
+      // Verificar permisos del usuario
+      const orderUserId = (order as any).user?.id || (order as any).user;
+      if (orderUserId != userId) {
+        throw new Error('No tienes permisos para solicitar reembolso de esta orden');
+      }
+
+      // 2. Verificar que hay un pago válido
+      const validPayment = (order as any).payments?.[0] || (order as any).payment;
+      if (!validPayment) {
+        throw new Error('No se encontró un pago válido para esta orden');
+      }
+
+      // 3. Agrupar productos por tienda
+      const orderItems = (order as any).order_items || [];
+      const storesMap = new Map();
+
+      console.log('🔍 [createRefundRequestByStore] Order items:', orderItems.length);
+      
+      orderItems.forEach((item: any, index: number) => {
+        console.log(`🔍 [createRefundRequestByStore] Item ${index}:`, {
+          id: item.id,
+          name: item.name,
+          product: item.product ? {
+            id: item.product.id,
+            title: item.product.title,
+            store: item.product.store ? {
+              id: item.product.store.id,
+              name: item.product.store.name
+            } : null
+          } : null
+        });
+        
+        const store = item.product?.store;
+        if (store) {
+          const storeId = store.id;
+          if (!storesMap.has(storeId)) {
+            storesMap.set(storeId, {
+              store: store,
+              items: [],
+              totalAmount: 0
+            });
+          }
+          storesMap.get(storeId).items.push(item);
+          storesMap.get(storeId).totalAmount += item.subtotal || item.price;
+        } else {
+          console.warn(`⚠️ [createRefundRequestByStore] Item ${item.id} no tiene store asociado`);
+        }
+      });
+      
+      console.log('🔍 [createRefundRequestByStore] Stores found:', storesMap.size);
+
+      if (storesMap.size === 0) {
+        throw new Error('No se encontraron productos de tiendas válidas en esta orden');
+      }
+
+      // 4. Crear un reembolso por cada tienda
+      const createdRefunds = [];
+      
+      for (const [storeId, storeData] of storesMap) {
+        // Verificar que no existe ya un reembolso para esta orden y tienda
+        const existingRefund = await strapi.entityService.findMany('api::refund.refund', {
+          filters: { 
+            order: numericOrderId as any,
+            store: storeId
+          }
+        });
+
+        if (existingRefund.length > 0) {
+          console.log(`Ya existe un reembolso para la orden ${numericOrderId} y tienda ${storeId}`);
+          continue;
+        }
+
+        // Crear el reembolso para esta tienda
+        console.log('🔍 [createRefundRequestByStore] Creando reembolso para tienda:', {
+          storeId: storeId,
+          storeIdType: typeof storeId,
+          storeName: storeData.store.name,
+          storeData: storeData.store,
+          storeIdFromStore: storeData.store.id,
+          storeIdFromStoreType: typeof storeData.store.id
+        });
+        
+        console.log('🔍 [createRefundRequestByStore] Store data para crear reembolso:', {
+          storeId: storeId,
+          storeIdType: typeof storeId,
+          storeDocumentId: storeData.store.documentId,
+          storeDocumentIdType: typeof storeData.store.documentId,
+          storeName: storeData.store.name,
+          storeObject: storeData.store
+        });
+
+        const refundDataToCreate = {
+          order: numericOrderId,
+          user: userId,
+          store: storeData.store.documentId, // Usar documentId para la relación
+          amount: storeData.totalAmount,
+          reason: refundData.reason as any,
+          description: `${refundData.description} - Productos de ${storeData.store.name}`,
+          refundStatus: 'pending' as any,
+          payment: validPayment,
+          currency: 'EUR',
+          refundId: `REF-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-${storeId}`,
+          // Metadatos adicionales
+          metadata: {
+            storeName: storeData.store.name,
+            storeId: storeId,
+            itemsCount: storeData.items.length,
+            items: storeData.items.map((item: any) => ({
+              id: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price
+            }))
+          }
+        };
+        
+        console.log('🔍 [createRefundRequestByStore] Datos del reembolso a crear:', refundDataToCreate);
+        
+        const refund = await strapi.entityService.create('api::refund.refund', {
+          data: refundDataToCreate
+        });
+
+        console.log('🔍 [createRefundRequestByStore] Reembolso creado (sin poblar):', {
+          id: refund.id,
+          documentId: (refund as any).documentId,
+          store: (refund as any).store,
+          storeType: typeof (refund as any).store,
+          refundData: refund
+        });
+
+        // Poblar el reembolso creado
+        const populatedRefund = await strapi.entityService.findOne('api::refund.refund', refund.id, {
+          populate: {
+            order: { 
+              populate: { 
+                user: true, 
+                order_items: { 
+                  populate: { 
+                    product: { 
+                      populate: { 
+                        store: true 
+                      } 
+                    } 
+                  } 
+                } 
+              } 
+            },
+            user: true,
+            store: true,
+            payment: true
+          }
+        });
+
+        console.log('🔍 [createRefundRequestByStore] Reembolso poblado:', {
+          id: populatedRefund.id,
+          store: (populatedRefund as any).store,
+          storeId: (populatedRefund as any).store?.id,
+          storeName: (populatedRefund as any).store?.name
+        });
+        
+        createdRefunds.push(populatedRefund);
+
+        // 5. Enviar notificaciones a la tienda
+        try {
+          await this.sendRefundNotification(populatedRefund, 'request_created');
+          await this.createRefundNotifications(populatedRefund, 'request_created');
+        } catch (notificationError) {
+          console.error(`⚠️ Error enviando notificaciones para tienda ${storeId}:`, notificationError);
+        }
+      }
+
+      return {
+        success: true,
+        refunds: createdRefunds,
+        message: `Se crearon ${createdRefunds.length} reembolso(s) para ${storesMap.size} tienda(s)`
+      };
+
+    } catch (error) {
+      console.error('Error creating refund requests by store:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Crear una nueva solicitud de reembolso con validaciones completas (función original)
    */
   async createRefundRequest(userId: string | number, orderId: string | number, refundData: any) {
     try {
-      // 1. Verificar que la orden existe y pertenece al usuario
-      const order = await strapi.entityService.findOne('api::order.order', orderId, {
+      // 1. Convertir documentId a id numérico si es necesario
+      let numericOrderId = orderId;
+      if (typeof orderId === 'string' && orderId.length > 10) {
+        // Es un documentId, intentar usar directamente
+        try {
+          const orderByDocumentId = await strapi.entityService.findOne('api::order.order', orderId, {
+            populate: ['payments', 'user']
+          });
+          if (!orderByDocumentId) {
+            throw new Error('Orden no encontrada');
+          }
+          numericOrderId = orderByDocumentId.id;
+        } catch (error) {
+          throw new Error('Orden no encontrada');
+        }
+      }
+
+      // 2. Verificar que la orden existe y pertenece al usuario
+      const order = await strapi.entityService.findOne('api::order.order', numericOrderId, {
         populate: ['payments', 'user']
       });
 
@@ -35,7 +272,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
 
       // 3. Verificar que no existe ya un reembolso para esta orden
       const existingRefund = await strapi.entityService.findMany('api::refund.refund', {
-        filters: { order: orderId as any }
+        filters: { order: numericOrderId as any }
       });
 
       if (existingRefund.length > 0) {
@@ -45,7 +282,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
       // 4. Crear el reembolso
       const refund = await strapi.entityService.findOne('api::refund.refund', (await strapi.entityService.create('api::refund.refund', {
         data: {
-          order: orderId,
+          order: numericOrderId,
           user: userId,
           amount: refundData.amount,
           reason: refundData.reason,
@@ -352,51 +589,23 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
   }) {
     const { storeId, status, page, limit } = params;
 
-          try {
-        // Determinar el documentId de la tienda
-      let finalStoreDocumentId: string;
-      
-      if (typeof storeId === 'string' && storeId.length > 10 && !storeId.includes('@')) {
-        // Si se pasa un string largo SIN @, asumir que es un documentId
-        finalStoreDocumentId = storeId;
-      } else if (typeof storeId === 'number') {
-        // Si se pasa un número, buscar la tienda por ID y obtener su documentId
-        const storeById = await strapi.entityService.findOne('api::store.store', storeId);
+    try {
+      console.log('🔍 [getStoreRefunds] Parámetros recibidos:', { storeId, status, page, limit });
 
-        if (storeById) {
-          finalStoreDocumentId = storeById.documentId;
-        } else {
-          return {
-            data: [],
-            pagination: { page, limit, total: 0, pages: 0 }
-          };
-        }
-      } else {
-        // Si se pasa un string corto (email), buscar la tienda por email del owner
-        const storeByOwner = await strapi.entityService.findMany('api::store.store', {
-          populate: ['owner']
-        });
-
-        // Filtrar manualmente por email del owner
-        const storeWithOwner = storeByOwner.find((store: any) => 
-          store.owner && store.owner.email === storeId
-        );
-
-        if (storeWithOwner) {
-          finalStoreDocumentId = storeWithOwner.documentId;
-        } else {
-          return {
-            data: [],
-            pagination: { page, limit, total: 0, pages: 0 }
-          };
-        }
+      // Simplificar: usar directamente el storeId como ID numérico
+      let numericStoreId = storeId;
+      if (typeof storeId === 'string' && !isNaN(parseInt(storeId))) {
+        numericStoreId = parseInt(storeId);
       }
 
-      // Simplificar el filtro - obtener todos los reembolsos y filtrar después
-      const baseFilters: any = {};
+      const baseFilters: any = {
+        store: numericStoreId
+      };
       if (status) {
         baseFilters.refundStatus = status;
       }
+
+      console.log('🔍 [getStoreRefunds] Buscando reembolsos con filtros:', baseFilters);
 
       const refunds = await strapi.entityService.findMany('api::refund.refund', {
         filters: baseFilters,
@@ -416,45 +625,30 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
             }
           },
           payment: true,
-          user: true
+          user: true,
+          store: true
         },
         sort: { createdAt: 'desc' },
         start: (page - 1) * limit,
-        limit: 100 // Aumentar límite para asegurar que obtenemos suficientes datos
+        limit: limit
       });
 
-
-
-      // Filtrar por tienda después de obtener los datos
-      const filteredRefunds = refunds.filter(refund => {
-        const refundWithPopulatedData = refund as any;
-        const orderItems = refundWithPopulatedData.order?.order_items || [];
-        
-
-        
-        const isFromStore = orderItems.some(item => {
-          const itemStoreDocumentId = item.product?.store?.documentId || item.product?.store?.id;
-                     const matches = itemStoreDocumentId === finalStoreDocumentId;
-           return matches;
+      console.log('🔍 [getStoreRefunds] Reembolsos encontrados:', refunds.length);
+      if (refunds.length > 0) {
+        console.log('🔍 [getStoreRefunds] Primer reembolso:', {
+          id: refunds[0].id,
+          store: (refunds[0] as any).store,
+          storeId: (refunds[0] as any).store?.id
         });
-        
-        return isFromStore;
-      });
-
-
-
-      // Aplicar paginación manual
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit;
-      const paginatedRefunds = filteredRefunds.slice(startIndex, endIndex);
+      }
 
       return {
-        data: paginatedRefunds,
+        data: refunds,
         pagination: {
           page,
           limit,
-          total: filteredRefunds.length,
-          pages: Math.ceil(filteredRefunds.length / limit)
+          total: refunds.length,
+          pages: Math.ceil(refunds.length / limit)
         }
       };
     } catch (error) {
@@ -638,11 +832,11 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           );
           
           // 2. Enviar email de notificación a la tienda
-          // Obtener el email del owner de la tienda
-          const store = (refund as any).order?.order_items?.[0]?.product?.store;
+          // Usar el campo store directo del reembolso (nuevo sistema)
+          const store = (refund as any).store;
           
           if (!store) {
-            console.error('❌ No se pudo obtener la tienda del producto');
+            console.error('❌ No se pudo obtener la tienda del reembolso');
             return;
           }
           
@@ -721,7 +915,8 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           });
           
           // 2. Notificación para la tienda
-          const store = (refund as any).order?.order_items?.[0]?.product?.store;
+          // Usar el campo store directo del reembolso (nuevo sistema)
+          const store = (refund as any).store;
           
           if (store) {
             // Hacer una consulta separada para obtener la tienda con su owner (igual que en sendRefundNotification)

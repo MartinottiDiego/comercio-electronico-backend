@@ -16,6 +16,16 @@ export default {
       },
     },
     {
+      method: 'POST',
+      path: '/refunds/request-by-store',
+      handler: 'refund.createRefundRequestByStore',
+      config: {
+        auth: false, // Deshabilitar auth de Strapi, usar middleware personalizado
+        policies: [],
+        middlewares: ['api::refund.auth'], // Usar middleware personalizado
+      },
+    },
+    {
       method: 'GET',
       path: '/refunds/user',
       handler: 'refund.getUserRefunds',
