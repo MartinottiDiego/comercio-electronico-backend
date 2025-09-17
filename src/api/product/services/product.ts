@@ -231,7 +231,6 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
         productSKU = this.generateProductSKU(productData.title);
         attempts++;
       }
-      
 
       // 1. Separar campos de media del resto de datos
       const { Media, thumbnail, ...productDataWithoutMedia } = productData;
@@ -276,7 +275,6 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
           categories: true
         }
       });
-
 
       // 2. Crear las variantes si existen
       if (variantsData.length > 0) {

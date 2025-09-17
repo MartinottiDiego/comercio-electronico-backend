@@ -55,8 +55,6 @@ export class EmailService {
         logger: process.env.NODE_ENV === 'development' // Habilitar logs en desarrollo
       };
 
-      
-
       this.transporter = require('nodemailer').createTransport(smtpConfig);
     }
   }
@@ -79,8 +77,6 @@ export class EmailService {
 
       // Añadir información del remitente
       const fromEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@waazaar.com';
-      
-      
 
       const info = await this.transporter.sendMail({
         ...emailData,
@@ -88,18 +84,8 @@ export class EmailService {
         replyTo: fromEmail
       });
 
-      
-
       return true;
     } catch (error) {
-      console.error('❌ Error enviando email:', {
-        error: error.message,
-        code: error.code,
-        command: error.command,
-        to: notification.recipientEmail,
-        subject: notification.title
-      });
-      
       // Log detallado del error
       if (error.response) {
         console.error('📧 Respuesta del servidor SMTP:', error.response);
@@ -447,20 +433,16 @@ Sistema de notificaciones automáticas
         });
 
         if (error) {
-          console.error('❌ Error enviando email con Resend:', error);
           return false;
         }
 
-        console.log('✅ Email enviado exitosamente con Resend:', data?.id);
         return true;
       } else {
         // Usar SMTP tradicional
         const info = await this.transporter.sendMail(mailOptions);
-        console.log('✅ Email enviado exitosamente:', info.messageId);
         return true;
       }
     } catch (error) {
-      console.error('❌ Error enviando email personalizado:', error);
       return false;
     }
   }
@@ -505,7 +487,6 @@ Sistema de notificaciones automáticas
           const store = data.order?.order_items?.[0]?.product?.store;
           
           if (!store || !store.owner) {
-            console.error('❌ No se pudo obtener la tienda o su owner');
             return false;
           }
           
@@ -515,7 +496,6 @@ Sistema de notificaciones automáticas
           });
           
           if (!storeOwner || !storeOwner.email) {
-            console.error('❌ No se pudo obtener el email del owner de la tienda');
             return false;
           }
           
@@ -538,7 +518,6 @@ Sistema de notificaciones automáticas
           return this.sendNotificationEmail(notification);
       }
     } catch (error) {
-      console.error('❌ Error enviando email de reembolso:', error);
       return false;
     }
   }

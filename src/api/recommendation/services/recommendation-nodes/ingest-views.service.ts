@@ -52,8 +52,7 @@ export class IngestViewsNode extends BaseNode {
 
   private async extractViewData(context: NodeContext): Promise<UserViewSummary[]> {
     const { userIds, startDate, endDate, config } = context;
-    
-    
+
     const recencyDate = new Date();
     recencyDate.setDate(recencyDate.getDate() - config.recencyDays);
     const fromDate = startDate || recencyDate;
@@ -61,7 +60,6 @@ export class IngestViewsNode extends BaseNode {
 
     this.log(`Extracting views from ${fromDate.toISOString()} to ${toDate.toISOString()}`);
 
-    
     const behaviorFilters: any = {
       action: 'view',
       timestamp: {
@@ -76,7 +74,6 @@ export class IngestViewsNode extends BaseNode {
       };
     }
 
-   
     const behaviors = await this.strapi.documents('api::user-behavior.user-behavior').findMany({
       filters: behaviorFilters,
       populate: {
@@ -90,7 +87,6 @@ export class IngestViewsNode extends BaseNode {
 
     this.log(`Found ${behaviors.length} view behaviors`);
 
-    
     let activityViews: any[] = [];
     try {
       const activityFilters: any = {

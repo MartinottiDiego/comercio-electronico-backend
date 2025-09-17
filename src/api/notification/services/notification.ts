@@ -27,19 +27,16 @@ export default factories.createCoreService('api::notification.notification', ({ 
       try {
         await this.sendEmailNotification(notification);
       } catch (emailError) {
-        console.error('❌ Error enviando email:', emailError);
-      }
+        }
 
       // Intentar enviar push notification (sin bloquear si falla)
       try {
         await this.sendPushNotification(notification);
       } catch (pushError) {
-        console.error('❌ Error enviando push notification:', pushError);
-      }
+        }
 
       return notification;
     } catch (error) {
-      console.error('❌ Error creando notificación:', error);
       throw error;
     }
   },
@@ -73,7 +70,6 @@ export default factories.createCoreService('api::notification.notification', ({ 
       
       return emailSent;
     } catch (error) {
-      console.error('❌ Error en sendEmailNotification:', error);
       return false;
     }
   },
@@ -115,7 +111,6 @@ export default factories.createCoreService('api::notification.notification', ({ 
       });
       
     } catch (error) {
-      console.error('❌ Error enviando email de rechazo de tienda:', error);
       return false;
     }
   },
@@ -155,7 +150,6 @@ export default factories.createCoreService('api::notification.notification', ({ 
       });
       
     } catch (error) {
-      console.error('❌ Error enviando email de aprobación de tienda:', error);
       return false;
     }
   },
@@ -203,7 +197,6 @@ export default factories.createCoreService('api::notification.notification', ({ 
         text: notification.message
       });
     } catch (error) {
-      console.error('❌ Error enviando email de tienda pendiente:', error);
       return false;
     }
   },
@@ -246,7 +239,6 @@ export default factories.createCoreService('api::notification.notification', ({ 
         text: notification.message
       });
     } catch (error) {
-      console.error('❌ Error enviando email de tienda pendiente a admin:', error);
       return false;
     }
   },
@@ -288,7 +280,6 @@ export default factories.createCoreService('api::notification.notification', ({ 
       
       return success;
     } catch (error) {
-      console.error('❌ Error en sendPushNotification:', error);
       return false;
     }
   },

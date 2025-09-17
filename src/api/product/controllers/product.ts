@@ -169,7 +169,6 @@ export default factories.createCoreController('api::product.product', ({ strapi 
     try {
       const { productData, variants } = ctx.request.body;
 
-
       if (!productData) {
         return ctx.badRequest('Datos del producto requeridos');
       }

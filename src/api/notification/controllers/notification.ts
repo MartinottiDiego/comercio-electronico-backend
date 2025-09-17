@@ -56,5 +56,45 @@ export default factories.createCoreController('api::notification.notification', 
       console.error('Error en find de notificaciones:', error);
       throw error;
     }
+  },
+
+  // Método para marcar notificación como leída
+  async markAsRead(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { userEmail } = ctx.request.body;
+      
+      if (!id) {
+        return ctx.badRequest('ID de notificación es requerido');
+      }
+      
+      if (!userEmail) {
+        return ctx.badRequest('userEmail es requerido');
+      }
+
+      // Verificar que la notificación pertenece al usuario
+      const notification = await strapi.entityService.findOne('api::notification.notification', id);
+      
+      if (!notification || notification.recipientEmail !== userEmail) {
+        return ctx.notFound('Notificación no encontrada');
+      }
+
+      // Marcar como leída
+      const updatedNotification = await strapi.entityService.update('api::notification.notification', id, {
+        data: {
+          notificationStatus: 'read',
+          readAt: new Date().toISOString()
+        }
+      });
+
+      return {
+        success: true,
+        notification: updatedNotification
+      };
+      
+    } catch (error) {
+      console.error('Error marcando notificación como leída:', error);
+      return ctx.internalServerError('Error interno del servidor');
+    }
   }
 })); 

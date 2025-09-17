@@ -7,8 +7,6 @@ export async function testAdminUsers() {
   try {
     const { findAdminUsers, getAdminEmails } = require('./admin-users');
     
-    console.log('🔍 Buscando usuarios admin...');
-    
     const adminUsers = await findAdminUsers();
     const adminEmails = await getAdminEmails();
     
@@ -34,7 +32,6 @@ export async function testAdminUsers() {
     };
     
   } catch (error) {
-    console.error('❌ Error en testAdminUsers:', error);
     return {
       success: false,
       error: error.message,
@@ -44,5 +41,4 @@ export async function testAdminUsers() {
     };
   }
 }
-
 

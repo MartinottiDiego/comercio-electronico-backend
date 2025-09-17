@@ -10,8 +10,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
    */
   async checkAllProductsStock() {
     try {
-      console.log('🔍 Iniciando verificación de stock de productos...');
-      
       // Obtener todos los productos con sus tiendas
       const products = await strapi.db.query('api::product.product').findMany({
         where: { 
@@ -34,8 +32,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
         if (result.updated) alertsUpdated++;
       }
 
-      console.log(`✅ Verificación completada: ${alertsCreated} alertas creadas, ${alertsUpdated} actualizadas`);
-      
       return {
         success: true,
         alertsCreated,
@@ -43,7 +39,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
         totalProducts: products.length
       };
     } catch (error) {
-      console.error('❌ Error verificando stock de productos:', error);
       throw error;
     }
   },
@@ -120,7 +115,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
 
       return { created: true, updated: false };
     } catch (error) {
-      console.error(`❌ Error verificando stock del producto ${product.title}:`, error);
       throw error;
     }
   },
@@ -149,7 +143,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
 
       return { created: false, updated: activeAlerts.length > 0 };
     } catch (error) {
-      console.error('❌ Error resolviendo alertas activas:', error);
       return { created: false, updated: false };
     }
   },
@@ -166,7 +159,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
         critical: 5
       };
     } catch (error) {
-      console.error('❌ Error obteniendo umbrales de stock:', error);
       return { low: 10, critical: 5 };
     }
   },
@@ -180,7 +172,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
       const storeOwner = store.owner;
 
       if (!storeOwner?.email) {
-        console.warn(`⚠️ No se puede enviar notificación: propietario de tienda sin email`);
         return;
       }
 
@@ -238,8 +229,7 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
 
       console.log(`📧 Notificación de stock enviada para: ${title}`);
     } catch (error) {
-      console.error('❌ Error enviando notificación de stock:', error);
-    }
+      }
   },
 
   /**
@@ -256,7 +246,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
         orderBy: { createdAt: 'desc' }
       });
     } catch (error) {
-      console.error('❌ Error obteniendo alertas de stock:', error);
       throw error;
     }
   },
@@ -275,7 +264,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
         }
       });
     } catch (error) {
-      console.error('❌ Error reconociendo alerta:', error);
       throw error;
     }
   },
@@ -292,7 +280,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
         }
       });
     } catch (error) {
-      console.error('❌ Error descartando alerta:', error);
       throw error;
     }
   }

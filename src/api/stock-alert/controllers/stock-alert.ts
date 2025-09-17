@@ -27,7 +27,6 @@ export default factories.createCoreController('api::stock-alert.stock-alert', ({
         }
       };
     } catch (error) {
-      console.error('❌ Error obteniendo alertas de tienda:', error);
       return ctx.internalServerError('Error obteniendo alertas de stock');
     }
   },
@@ -44,7 +43,6 @@ export default factories.createCoreController('api::stock-alert.stock-alert', ({
         message: 'Verificación de stock completada'
       };
     } catch (error) {
-      console.error('❌ Error verificando stock:', error);
       return ctx.internalServerError('Error verificando stock de productos');
     }
   },
@@ -76,7 +74,6 @@ export default factories.createCoreController('api::stock-alert.stock-alert', ({
         message: 'Verificación de stock del producto completada'
       };
     } catch (error) {
-      console.error('❌ Error verificando stock del producto:', error);
       return ctx.internalServerError('Error verificando stock del producto');
     }
   },
@@ -104,7 +101,6 @@ export default factories.createCoreController('api::stock-alert.stock-alert', ({
         message: 'Alerta marcada como reconocida'
       };
     } catch (error) {
-      console.error('❌ Error reconociendo alerta:', error);
       return ctx.internalServerError('Error reconociendo alerta');
     }
   },
@@ -127,7 +123,6 @@ export default factories.createCoreController('api::stock-alert.stock-alert', ({
         message: 'Alerta descartada'
       };
     } catch (error) {
-      console.error('❌ Error descartando alerta:', error);
       return ctx.internalServerError('Error descartando alerta');
     }
   },
@@ -190,7 +185,6 @@ export default factories.createCoreController('api::stock-alert.stock-alert', ({
         }
       };
     } catch (error) {
-      console.error('❌ Error obteniendo estadísticas de alertas:', error);
       return ctx.internalServerError('Error obteniendo estadísticas de alertas');
     }
   }

@@ -22,7 +22,6 @@ export default {
           stripeConfig.webhookSecret
         );
       } catch (signatureError) {
-        console.error('❌ [WEBHOOK] Signature verification failed:', signatureError.message);
         event = ctx.request.body as any;
       }
       
@@ -49,7 +48,6 @@ export default {
       
       ctx.body = { received: true };
     } catch (error) {
-      console.error('❌ [WEBHOOK] Error in webhook:', error);
       ctx.throw(400, 'Webhook error');
     }
   },
@@ -104,7 +102,6 @@ export default {
       
       return payment;
     } catch (error) {
-      console.error('❌ [WEBHOOK] Error creating payment record:', error);
       return null;
     }
   },
@@ -115,8 +112,7 @@ export default {
         data: { orderStatus }
       });
     } catch (error) {
-      console.error(`❌ Error updating order orderStatus:`, error);
-    }
+      }
   },
 
   // Funciones auxiliares para manejar eventos de webhook
@@ -156,7 +152,6 @@ export default {
       // 1. Validar datos de la sesión
       const sessionValidation = this.validateSessionData(session);
       if (!sessionValidation.isValid) {
-        console.error('❌ Session validation failed:', sessionValidation.errors);
         throw new Error(`Session validation failed: ${sessionValidation.errors.join(', ')}`);
       }
       
@@ -202,7 +197,6 @@ export default {
       // 5. Validar el mapeo de productos
       const mappingValidation = this.validateProductMapping(productMapping, lineItems.data);
       if (!mappingValidation.isValid) {
-        console.error('❌ Product mapping validation failed:', mappingValidation.errors);
         throw new Error(`Product mapping validation failed: ${mappingValidation.errors.join(', ')}`);
       }
       
@@ -216,16 +210,14 @@ export default {
         try {
           shippingAddressId = shippingAddress.id;
         } catch (error) {
-          console.error('❌ Error with shipping address:', error);
-        }
+          }
       }
       
       if (billingAddress && billingAddress.id) {
         try {
           billingAddressId = billingAddress.id;
         } catch (error) {
-          console.error('❌ Error with billing address:', error);
-        }
+          }
       }
       
       // 7. Crear la orden usando el servicio unificado
@@ -248,7 +240,6 @@ export default {
         // Obtener el mapeo correspondiente para este item
         const productMappingItem = productMapping[i];
         if (!productMappingItem) {
-          console.error(`❌ No product mapping found for item ${i + 1}`);
           failedItems++;
           continue;
         }
@@ -261,7 +252,6 @@ export default {
           if (numericProductId) {
             productId = numericProductId;
           } else {
-            console.error('❌ Could not find product with documentId:', productId);
             failedItems++;
             continue;
           }
@@ -273,7 +263,6 @@ export default {
         });
         
         if (!product) {
-          console.error('❌ Product not found with ID:', productId);
           failedItems++;
           continue;
         }
@@ -293,8 +282,7 @@ export default {
               // Reserva no encontrada, continuar sin confirmarla
             }
           } catch (error) {
-            console.error('❌ Error confirming stock reservation:', reservationId, error);
-          }
+            }
         }
         
         // 10. Crear order item
@@ -320,7 +308,6 @@ export default {
           
           processedItems++;
         } catch (error) {
-          console.error('❌ Error creating order item:', error);
           failedItems++;
         }
       }
@@ -330,19 +317,27 @@ export default {
       const payment = await this.createPaymentRecord(order.id, session, userId, receiptUrl);
       
       if (!payment) {
-        console.error('❌ [WEBHOOK] Failed to create payment record');
         throw new Error('Failed to create payment record');
       }
       
-      console.log('✅ [WEBHOOK] Payment record created successfully:', payment.id);
-
-      // Actualizar estado de la orden
+      // Actualizar estado de la orden usando el servicio (para triggers de notificaciones)
+      await strapi.service('api::order.order').updateOrderStatus(order.id, 'confirmed');
+      
+      // Actualizar también el estado de pago
       await strapi.entityService.update('api::order.order', order.id, {
         data: {
-          orderStatus: 'confirmed',
           paymentStatus: 'paid'
         }
       });
+
+      // Crear notificaciones de confirmación de pago
+      const orderWithDetails = await strapi.entityService.findOne('api::order.order', order.id, {
+        populate: ['user', 'order_items.product.store.owner']
+      });
+      
+      if (orderWithDetails) {
+        await strapi.service('api::order.order').createPaymentConfirmationNotifications(orderWithDetails);
+      }
 
       // Procesar sesión de checkout
       if (session.mode === 'checkout.session.completed') {
@@ -378,7 +373,6 @@ export default {
       return order;
       
     } catch (error) {
-      console.error('❌ Error processing checkout session:', error);
       throw error;
     }
   },
@@ -486,7 +480,6 @@ export default {
       });
       
       if (payments.length === 0) {
-        console.warn('⚠️ No payment found for refunded charge:', charge.id);
         return;
       }
       
@@ -531,8 +524,7 @@ export default {
           await refundService.createRefundNotifications(updatedRefund, 'completed');
 
         } catch (notificationError) {
-          console.error('⚠️ Error creando notificación desde webhook:', notificationError);
-        }
+          }
       }
       
       // Actualizar el estado del pago
@@ -556,8 +548,7 @@ export default {
       }
       
     } catch (error) {
-      console.error('❌ Error handling charge refunded:', error);
-    }
+      }
   },
 
   /**
@@ -583,7 +574,6 @@ export default {
       });
       
       if (refunds.length === 0) {
-        console.warn('⚠️ No refund found for Stripe refund:', refundObject.id);
         return;
       }
       
@@ -615,8 +605,7 @@ export default {
       });
       
     } catch (error) {
-      console.error('❌ Error handling refund updated:', error);
-    }
+      }
   },
 
   /**
@@ -632,7 +621,6 @@ export default {
       });
       
       if (payments.length === 0) {
-        console.warn('⚠️ No payment found for disputed charge:', dispute.charge);
         return;
       }
       
@@ -655,7 +643,6 @@ export default {
       });
       
     } catch (error) {
-      console.error('❌ Error handling charge dispute created:', error);
-    }
+      }
   }
 };

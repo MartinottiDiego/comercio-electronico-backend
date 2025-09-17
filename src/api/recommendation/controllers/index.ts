@@ -78,8 +78,6 @@ export default ({ strapi }: { strapi: any }) => {
       try {
         const { userId, productId, action, context, sessionId, metadata } = ctx.request.body;
 
-
-
         if (!userId || !action || !context) {
           return ctx.badRequest('userId, action, and context are required');
         }
@@ -117,8 +115,6 @@ export default ({ strapi }: { strapi: any }) => {
         const result = await strapi.entityService.create('api::user-behavior.user-behavior', {
           data: behaviorData
         });
-
-
 
         return { success: true, message: 'Behavior tracked successfully' };
       } catch (error) {

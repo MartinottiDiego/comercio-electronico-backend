@@ -49,7 +49,6 @@ export class InsightsAutomationService {
 
     try {
 
-      
       // Guardar la instancia de Strapi
       this.strapi = strapiInstance;
       
@@ -62,7 +61,6 @@ export class InsightsAutomationService {
       this.isInitialized = true;
 
     } catch (error) {
-      console.error('❌ [INSIGHTS AUTOMATION] Error inicializando sistema:', error);
       throw error;
     }
   }
@@ -180,7 +178,6 @@ export class InsightsAutomationService {
       this.triggers.set(trigger.id, trigger);
     }
 
-
   }
 
   /**
@@ -204,8 +201,7 @@ export class InsightsAutomationService {
 
           await this.executeTrigger(trigger);
         } catch (error) {
-          console.error(`❌ [INSIGHTS AUTOMATION] Error ejecutando trigger ${trigger.name}:`, error);
-        }
+          }
       }, {
         timezone: 'America/Argentina/Buenos_Aires'
       });
@@ -215,11 +211,9 @@ export class InsightsAutomationService {
       // Calcular próxima ejecución
       const nextRun = this.calculateNextRun(trigger.schedule);
       trigger.nextRun = nextRun;
-      
 
     } catch (error) {
-      console.error(`❌ [INSIGHTS AUTOMATION] Error programando trigger ${trigger.name}:`, error);
-    }
+      }
   }
 
   /**
@@ -235,7 +229,6 @@ export class InsightsAutomationService {
     };
 
     try {
-
 
       // Verificar que strapi esté disponible antes de ejecutar
       if (!this.strapi || !this.strapi.entityService) {
@@ -275,13 +268,9 @@ export class InsightsAutomationService {
       // Calcular próxima ejecución
       trigger.nextRun = this.calculateNextRun(trigger.schedule);
 
-
-
     } catch (error) {
       result.success = false;
       result.errors.push(error instanceof Error ? error.message : 'Error desconocido');
-      console.error(`❌ [INSIGHTS AUTOMATION] Error en trigger ${trigger.name}:`, error);
-      
       // Si es un error de strapi no disponible, intentar reintentar más tarde
       if (error instanceof Error && error.message.includes('Strapi no está disponible')) {
 
@@ -290,8 +279,7 @@ export class InsightsAutomationService {
           try {
             await this.executeTrigger(trigger);
           } catch (retryError) {
-            console.error(`❌ [INSIGHTS AUTOMATION] Error en reintento de trigger ${trigger.name}:`, retryError);
-          }
+            }
         }, 5 * 60 * 1000); // 5 minutos
       }
     } finally {
@@ -374,7 +362,6 @@ export class InsightsAutomationService {
       try {
         // Verificar que strapi esté disponible
         if (!this.strapi || !this.strapi.entityService) {
-          console.error(`❌ [INSIGHTS AUTOMATION] Strapi no disponible para guardar insight: ${insightData.title}`);
           continue;
         }
 
@@ -398,15 +385,13 @@ export class InsightsAutomationService {
         });
         savedCount++;
 
-
         // Enviar notificaciones para insights importantes
         if (insightData.severity === 'critical' || insightData.severity === 'high') {
           await insightsNotificationService.notifyInsight(insightData);
         }
 
       } catch (error) {
-        console.error(`❌ [INSIGHTS AUTOMATION] Error guardando insight "${insightData.title}":`, error);
-      }
+        }
     }
     
     return savedCount;

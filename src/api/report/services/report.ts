@@ -65,7 +65,6 @@ export default factories.createCoreService('api::report.report', ({ strapi }) =>
         }
       });
 
-
       // Verificar que el reporte se creó correctamente con el generatedBy
       const createdReport = await strapi.entityService.findOne('api::report.report', report.id, {
         populate: ['generatedBy']
@@ -269,7 +268,6 @@ export default factories.createCoreService('api::report.report', ({ strapi }) =>
       populate: ['order_items', 'order_items.product']
     });
 
-
     // Obtener todas las órdenes en el rango de fechas (admin puede ver todas)
     const orders = await strapi.entityService.findMany('api::order.order', {
       filters: {
@@ -280,7 +278,6 @@ export default factories.createCoreService('api::report.report', ({ strapi }) =>
       },
       populate: ['order_items', 'order_items.product']
     });
-
 
     // Calcular total de ventas
     const totalSales = orders.reduce((sum, order) => sum + (order.total || 0), 0);

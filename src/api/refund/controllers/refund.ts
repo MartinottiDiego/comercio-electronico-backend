@@ -13,34 +13,15 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
     try {
       const { user } = ctx.state;
       
-      console.log('🔍 [CONTROLLER] createRefundRequestByStore - Usuario:', {
-        id: user?.id,
-        email: user?.email
-      });
-      
       if (!user) {
         return ctx.unauthorized('Usuario no autenticado');
       }
 
       const { orderId, reason, description, amount } = ctx.request.body;
       
-      console.log('🔍 [CONTROLLER] Datos recibidos del frontend:', {
-        orderId,
-        reason,
-        description,
-        amount,
-        body: ctx.request.body
-      });
-
       if (!orderId || !reason) {
         return ctx.badRequest('orderId y reason son requeridos');
       }
-
-      console.log('🔍 [CONTROLLER] Llamando al servicio con:', {
-        userId: user.id,
-        orderId,
-        refundData: { reason, description: description || 'Solicitud de reembolso', amount }
-      });
 
       const result = await strapi.service('api::refund.refund').createRefundRequestByStore(
         user.id,
@@ -48,15 +29,12 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         { reason, description: description || 'Solicitud de reembolso', amount }
       );
 
-      console.log('🔍 [CONTROLLER] Resultado del servicio:', result);
-
       return ctx.send({
         success: true,
         data: result,
         message: result.message
       });
     } catch (error) {
-      console.error('❌ [CONTROLLER] Error creating refund request by store:', error);
       return ctx.internalServerError('Error creando solicitud de reembolso por tienda');
     }
   },
@@ -115,8 +93,6 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         limit: parseInt(limit)
       });
 
-
-      
       ctx.body = {
         success: true,
         data: result
@@ -472,7 +448,6 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
   async testRefundRelations(ctx) {
     try {
 
-      
       // Obtener un reembolso con todas las relaciones populadas
       const testRefund = await strapi.entityService.findMany('api::refund.refund', {
         populate: {
@@ -496,8 +471,6 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         limit: 1
       });
 
-
-
       ctx.body = {
         success: true,
         message: 'Relaciones de reembolsos verificadas',
@@ -505,7 +478,6 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error('❌ [RefundController] Error probando relaciones:', error);
       ctx.body = {
         success: false,
         message: 'Error probando relaciones',

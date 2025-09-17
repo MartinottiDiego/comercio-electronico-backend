@@ -103,7 +103,6 @@ export default class RecommendationEngine {
         recommendations.push(...products);
       }
 
-      
       const uniqueRecommendations = Array.from(new Set(recommendations.map(r => r.id)))
         .map(id => recommendations.find(r => r.id === id))
         .slice(0, limit);

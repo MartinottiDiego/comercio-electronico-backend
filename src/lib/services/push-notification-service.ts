@@ -28,7 +28,6 @@ export class PushNotificationService {
     const privateKey = process.env.VAPID_PRIVATE_KEY;
     
     if (!publicKey || !privateKey) {
-      console.warn('⚠️ VAPID keys no configuradas. Las notificaciones push no funcionarán.');
       this.vapidKeys = { publicKey: 'dummy-public-key', privateKey: 'dummy-private-key' };
     } else {
       this.vapidKeys = { publicKey, privateKey };

@@ -74,22 +74,18 @@ export class FeatureBuilderNode extends BaseNode {
 
     this.log(`Building features from ${purchaseData.length} purchase summaries, ${viewData.length} view summaries, ${favoriteData.length} favorite summaries`);
 
-   
     const purchaseMap = new Map<string, UserPurchaseSummary>(purchaseData.map((p: UserPurchaseSummary) => [p.userId, p]));
     const viewMap = new Map<string, UserViewSummary>(viewData.map((v: UserViewSummary) => [v.userId, v]));
     const favoriteMap = new Map<string, UserFavoriteSummary>(favoriteData.map((f: UserFavoriteSummary) => [f.userId, f]));
 
-    
     const allUserIds = new Set([
       ...purchaseData.map((p: UserPurchaseSummary) => p.userId),
       ...viewData.map((v: UserViewSummary) => v.userId),
       ...favoriteData.map((f: UserFavoriteSummary) => f.userId)
     ]);
 
-    
     const coPurchaseMatrix = this.buildCoPurchaseMatrix(purchaseData);
 
-    
     const productDetails = await this.fetchProductDetails(allUserIds, purchaseMap, viewMap, favoriteMap);
 
     const userFeatures: UserFeatures[] = [];

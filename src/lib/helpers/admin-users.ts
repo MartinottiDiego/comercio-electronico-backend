@@ -18,7 +18,6 @@ export async function findAdminUsers() {
 
     return adminUsers;
   } catch (error) {
-    console.error('❌ Error buscando usuarios admin:', error);
     return [];
   }
 }
@@ -28,9 +27,7 @@ export async function getAdminEmails() {
     const adminUsers = await findAdminUsers();
     return adminUsers.map(user => user.email).filter(email => email);
   } catch (error) {
-    console.error('❌ Error obteniendo emails de admin:', error);
     return [];
   }
 }
-
 

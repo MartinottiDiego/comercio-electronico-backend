@@ -106,7 +106,6 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         const adminUsers = await findAdminUsers();
         
         if (adminUsers.length === 0) {
-          console.warn('⚠️ No se encontraron usuarios admin para enviar notificación');
           // Continuar con la creación de la tienda aunque no haya admins
         }
         
@@ -125,10 +124,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         );
         
         await Promise.all(notificationPromises);
-        console.log(`✅ Notificaciones enviadas a ${adminUsers.length} administradores`);
-        
-      } catch (notificationError) {
-        console.error('❌ Error enviando notificaciones de tienda pendiente:', notificationError);
+        } catch (notificationError) {
         // No fallar la operación si la notificación falla
       }
 
@@ -233,15 +229,12 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   // Nuevo método para top-rated stores
   async getTopRated(ctx) {
     try {
-      
-      
+
       // Obtener todas las stores primero para probar
       const allStores = await strapi.entityService.findMany('api::store.store', {
         populate: ['image'],
         limit: 8,
       });
-
-      
 
       const response = {
         data: allStores,
@@ -324,9 +317,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             roleUser: 'tienda' // Cambiar el rol del usuario a 'tienda' en el profile
           }
         });
-        console.log(`✅ Rol del usuario ${store.owner.email} actualizado a 'tienda' en su profile`);
-      } catch (roleUpdateError) {
-        console.error('❌ Error actualizando rol del usuario:', roleUpdateError);
+        } catch (roleUpdateError) {
         // No fallar la operación si la actualización del rol falla
       }
 
@@ -370,10 +361,8 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
           );
           
           await Promise.all(notificationPromises);
-          console.log(`✅ Notificaciones de confirmación enviadas a ${adminUsers.length} administradores`);
-        }
+          }
       } catch (notificationError) {
-        console.error('❌ Error enviando notificaciones de confirmación a admins:', notificationError);
         // No fallar la operación si la notificación falla
       }
 
@@ -460,9 +449,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
             roleUser: 'comprador' // Revertir el rol del usuario a 'comprador' en el profile
           }
         });
-        console.log(`✅ Rol del usuario ${store.owner.email} revertido a 'comprador' en su profile`);
-      } catch (roleUpdateError) {
-        console.error('❌ Error revirtiendo rol del usuario:', roleUpdateError);
+        } catch (roleUpdateError) {
         // No fallar la operación si la actualización del rol falla
       }
 
@@ -506,10 +493,8 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
           );
           
           await Promise.all(notificationPromises);
-          console.log(`✅ Notificaciones de confirmación enviadas a ${adminUsers.length} administradores`);
-        }
+          }
       } catch (notificationError) {
-        console.error('❌ Error enviando notificaciones de confirmación a admins:', notificationError);
         // No fallar la operación si la notificación falla
       }
 
