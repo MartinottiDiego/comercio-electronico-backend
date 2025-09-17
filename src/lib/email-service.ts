@@ -36,6 +36,8 @@ export class EmailService {
           user: 'resend',
           pass: process.env.RESEND_API_KEY,
         },
+        encoding: 'utf8',
+        charset: 'utf-8'
       });
     } else {
       // Usar SMTP tradicional (Gmail configurado)
@@ -51,6 +53,8 @@ export class EmailService {
           rejectUnauthorized: false,
           ciphers: 'SSLv3'
         },
+        encoding: 'utf8',
+        charset: 'utf-8',
         debug: process.env.NODE_ENV === 'development', // Habilitar debug en desarrollo
         logger: process.env.NODE_ENV === 'development' // Habilitar logs en desarrollo
       };
@@ -319,12 +323,6 @@ Sistema de notificaciones automáticas
    * Enviar email para actualización de estado de reembolso (para cliente)
    */
   async sendRefundStatusUpdateEmail(refund: any, order: any, customer: any): Promise<boolean> {
-    console.log('📧 [sendRefundStatusUpdateEmail] Iniciando envío de email:', {
-      refundId: refund.id,
-      status: refund.refundStatus,
-      customerEmail: customer?.email,
-      orderNumber: order?.orderNumber
-    });
     
     // Obtener el motivo de rechazo del historial de estados
     let rejectionReason = '';
@@ -332,9 +330,6 @@ Sistema de notificaciones automáticas
       const latestStatus = refund.metadata.statusHistory[refund.metadata.statusHistory.length - 1];
       if (latestStatus?.comment) {
         rejectionReason = latestStatus.comment;
-        console.log('📧 [sendRefundStatusUpdateEmail] Motivo de rechazo encontrado:', rejectionReason);
-      } else {
-        console.log('📧 [sendRefundStatusUpdateEmail] No se encontró motivo de rechazo en el historial');
       }
     }
     
@@ -364,10 +359,7 @@ Sistema de notificaciones automáticas
       priority: refund.refundStatus === 'completed' ? 'high' : 'normal'
     };
     
-    console.log('📧 [sendRefundStatusUpdateEmail] Datos del email:', notification);
-    
     const result = await this.sendNotificationEmail(notification);
-    console.log('📧 [sendRefundStatusUpdateEmail] Resultado del envío:', result);
     
     return result;
   }

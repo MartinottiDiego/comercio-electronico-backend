@@ -176,12 +176,6 @@ export default factories.createCoreService('api::notification.notification', ({ 
         ? `${user.profile.firstName} ${user.profile.lastName || ''}`.trim()
         : user?.username || 'Usuario';
       
-      console.log('📧 Store Pending Email - Datos extraídos:', {
-        storeName,
-        specialty,
-        ownerName,
-        message: notification.message
-      });
       
       // Generar HTML del email
       const htmlContent = generateStorePendingEmail(storeName, ownerName, specialty);

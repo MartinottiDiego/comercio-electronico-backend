@@ -47,10 +47,26 @@ export default factories.createCoreService('api::order.order', ({ strapi }) => (
   /**
    * Actualizar el estado de una orden
    */
-  async updateOrderStatus(orderId: string | number, orderStatus: string) {
+  async updateOrderStatus(orderId: string | number, orderStatus: string, notes?: string) {
     try {
+      let numericId = orderId;
+      
+      // Si es un documentId (string), obtener el ID numérico
+      if (typeof orderId === 'string') {
+        const order = await strapi.db.connection('orders')
+          .where('document_id', orderId)
+          .select('id')
+          .first();
+          
+        if (!order) {
+          throw new Error('Order not found');
+        }
+        
+        numericId = order.id;
+      }
+
       // Obtener la orden actual para comparar estados
-      const currentOrder = await strapi.entityService.findOne('api::order.order', orderId, {
+      const currentOrder = await strapi.entityService.findOne('api::order.order', numericId, {
         populate: ['user', 'order_items.product.store.owner']
       });
 
@@ -61,13 +77,20 @@ export default factories.createCoreService('api::order.order', ({ strapi }) => (
       const previousStatus = currentOrder.orderStatus;
       
       // Actualizar el estado
-      const order = await strapi.entityService.update('api::order.order', orderId, {
-        data: { orderStatus: orderStatus as any }
+      const updateData: any = { orderStatus: orderStatus as any };
+      if (notes) {
+        updateData.notes = notes;
+      }
+      
+      const order = await strapi.entityService.update('api::order.order', numericId, {
+        data: updateData,
+        populate: ['user', 'order_items', 'order_items.product', 'order_items.product.store']
       });
 
       // Crear notificaciones si el estado cambió
       if (previousStatus !== orderStatus) {
-        await this.createOrderStatusNotifications(currentOrder, orderStatus, previousStatus);
+        // Usar la orden actualizada que incluye el mensaje de cancelación
+        await this.createOrderStatusNotifications(order, orderStatus, previousStatus);
       }
 
       return order;
@@ -150,36 +173,10 @@ export default factories.createCoreService('api::order.order', ({ strapi }) => (
         }
       });
 
-      // Crear notificación para la tienda (si aplica)
-      if (storeOwner && ['confirmed', 'processing', 'shipped', 'delivered'].includes(newStatus)) {
-        const storeNotificationMessages = {
-          'confirmed': `Nuevo pedido #${order.orderNumber} confirmado - Total: €${order.total}`,
-          'processing': `Pedido #${order.orderNumber} en procesamiento`,
-          'shipped': `Pedido #${order.orderNumber} enviado exitosamente`,
-          'delivered': `Pedido #${order.orderNumber} entregado al cliente`
-        };
+      // Solo crear notificaciones para el comprador
+      // El dueño de la tienda ya sabe que está cambiando el estado
 
-        await notificationService.createNotification({
-          type: 'new_sale',
-          title: `📊 ${notificationConfig.title}`,
-          message: storeNotificationMessages[newStatus],
-          priority: notificationConfig.priority,
-          recipientEmail: storeOwner.email,
-          recipientRole: 'tienda',
-          actionUrl: `/dashboard/pedidos`,
-          actionText: 'Ver pedidos',
-          metadata: {
-            orderId: order.id,
-            orderNumber: order.orderNumber,
-            buyerEmail: buyer.email,
-            total: order.total,
-            currency: order.currency,
-            storeId: store.id
-          }
-        });
-      }
-
-      } catch (error) {
+    } catch (error) {
       // No fallar la operación si las notificaciones fallan
     }
   },

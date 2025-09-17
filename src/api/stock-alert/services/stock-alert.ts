@@ -227,7 +227,6 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
         });
       }
 
-      console.log(`📧 Notificación de stock enviada para: ${title}`);
     } catch (error) {
       }
   },
