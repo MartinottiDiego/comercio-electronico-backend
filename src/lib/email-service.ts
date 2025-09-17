@@ -333,9 +333,28 @@ Sistema de notificaciones automáticas
    * Enviar email para actualización de estado de reembolso (para cliente)
    */
   async sendRefundStatusUpdateEmail(refund: any, order: any, customer: any): Promise<boolean> {
+    console.log('📧 [sendRefundStatusUpdateEmail] Iniciando envío de email:', {
+      refundId: refund.id,
+      status: refund.refundStatus,
+      customerEmail: customer?.email,
+      orderNumber: order?.orderNumber
+    });
+    
+    // Obtener el motivo de rechazo del historial de estados
+    let rejectionReason = '';
+    if (refund.refundStatus === 'rejected' && refund.metadata?.statusHistory) {
+      const latestStatus = refund.metadata.statusHistory[refund.metadata.statusHistory.length - 1];
+      if (latestStatus?.comment) {
+        rejectionReason = latestStatus.comment;
+        console.log('📧 [sendRefundStatusUpdateEmail] Motivo de rechazo encontrado:', rejectionReason);
+      } else {
+        console.log('📧 [sendRefundStatusUpdateEmail] No se encontró motivo de rechazo en el historial');
+      }
+    }
+    
     const statusMessages = {
       'completed': `¡Excelente noticia! Tu reembolso de €${refund.amount} ha sido procesado exitosamente.`,
-      'rejected': `Lamentablemente, tu solicitud de reembolso ha sido rechazada por la tienda.`,
+      'rejected': `Lamentablemente, tu solicitud de reembolso ha sido rechazada por la tienda.${rejectionReason ? `\n\nMotivo del rechazo: ${rejectionReason}` : ''}`,
       'processing': `Tu solicitud de reembolso ha sido aprobada y está siendo procesada.`,
       'failed': `Hubo un problema al procesar tu reembolso. Contactaremos contigo pronto.`
     };
@@ -347,8 +366,8 @@ Sistema de notificaciones automáticas
       'failed': '⚠️'
     };
 
-    const emoji = statusEmojis[refund.status] || 'ℹ️';
-    const message = statusMessages[refund.status] || `Tu reembolso ha cambiado a estado: ${refund.status}`;
+    const emoji = statusEmojis[refund.refundStatus] || 'ℹ️';
+    const message = statusMessages[refund.refundStatus] || `Tu reembolso ha cambiado a estado: ${refund.refundStatus}`;
     
     const notification = {
       recipientEmail: customer.email,
@@ -356,10 +375,15 @@ Sistema de notificaciones automáticas
       message: message,
       actionUrl: `/historial-compras`,
       actionText: 'Ver Historial',
-      priority: refund.status === 'completed' ? 'high' : 'normal'
+      priority: refund.refundStatus === 'completed' ? 'high' : 'normal'
     };
     
-    return this.sendNotificationEmail(notification);
+    console.log('📧 [sendRefundStatusUpdateEmail] Datos del email:', notification);
+    
+    const result = await this.sendNotificationEmail(notification);
+    console.log('📧 [sendRefundStatusUpdateEmail] Resultado del envío:', result);
+    
+    return result;
   }
 
   /**

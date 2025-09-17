@@ -309,6 +309,164 @@ export default factories.createCoreController('api::refund.refund', ({ strapi })
   },
 
   /**
+   * Probar envío de emails de reembolso (solo para desarrollo)
+   */
+  async testRefundEmails(ctx: Context) {
+    try {
+      const { user } = ctx.state;
+      
+      if (!user) {
+        return ctx.unauthorized('Usuario no autenticado');
+      }
+
+      // Solo permitir en desarrollo
+      if (process.env.NODE_ENV === 'production') {
+        return ctx.forbidden('Esta función solo está disponible en desarrollo');
+      }
+
+      const { EmailService } = require('../../../lib/email-service');
+      const emailService = EmailService.getInstance();
+
+      // Datos de prueba para simular un reembolso
+      const mockRefund = {
+        id: 1,
+        refundId: 'TEST-REF-001',
+        amount: 25.99,
+        refundStatus: 'pending',
+        reason: 'defective_product',
+        description: 'Producto defectuoso - prueba de email',
+        createdAt: new Date().toISOString()
+      };
+
+      const mockOrder = {
+        id: 1,
+        orderNumber: 'ORD-001',
+        order_items: [{
+          product: {
+            title: 'Producto de Prueba',
+            store: {
+              name: 'Tienda de Prueba'
+            }
+          }
+        }]
+      };
+
+      const mockCustomer = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        profile: {
+          firstName: user.firstName || 'Usuario',
+          lastName: user.lastName || 'Prueba'
+        }
+      };
+
+      const results = [];
+
+      // 1. Probar email de confirmación al usuario
+      try {
+        const userEmailResult = await emailService.sendRefundRequestConfirmationToUser(
+          mockRefund,
+          mockOrder,
+          mockCustomer
+        );
+        results.push({
+          type: 'user_confirmation',
+          success: userEmailResult,
+          message: userEmailResult ? 'Email de confirmación enviado' : 'Error enviando email de confirmación'
+        });
+      } catch (error) {
+        results.push({
+          type: 'user_confirmation',
+          success: false,
+          message: 'Error: ' + error.message
+        });
+      }
+
+      // 2. Probar email de notificación a la tienda
+      try {
+        const storeEmailResult = await emailService.sendRefundRequestNotificationToStore(
+          mockRefund,
+          mockOrder,
+          mockCustomer,
+          user.email // Usar el email del usuario como tienda para la prueba
+        );
+        results.push({
+          type: 'store_notification',
+          success: storeEmailResult,
+          message: storeEmailResult ? 'Email de notificación a tienda enviado' : 'Error enviando email a tienda'
+        });
+      } catch (error) {
+        results.push({
+          type: 'store_notification',
+          success: false,
+          message: 'Error: ' + error.message
+        });
+      }
+
+      // 3. Probar email de actualización de estado (rechazado)
+      try {
+        const statusUpdateRefund = { ...mockRefund, refundStatus: 'rejected' };
+        const statusEmailResult = await emailService.sendRefundStatusUpdateEmail(
+          statusUpdateRefund,
+          mockOrder,
+          mockCustomer
+        );
+        results.push({
+          type: 'status_update',
+          success: statusEmailResult,
+          message: statusEmailResult ? 'Email de actualización de estado enviado' : 'Error enviando email de estado'
+        });
+      } catch (error) {
+        results.push({
+          type: 'status_update',
+          success: false,
+          message: 'Error: ' + error.message
+        });
+      }
+
+      // 4. Probar email de reembolso completado
+      try {
+        const completedRefund = { ...mockRefund, refundStatus: 'completed' };
+        const completedEmailResult = await emailService.sendRefundCompletedEmail(
+          completedRefund,
+          mockOrder,
+          mockCustomer
+        );
+        results.push({
+          type: 'completed',
+          success: completedEmailResult,
+          message: completedEmailResult ? 'Email de reembolso completado enviado' : 'Error enviando email de completado'
+        });
+      } catch (error) {
+        results.push({
+          type: 'completed',
+          success: false,
+          message: 'Error: ' + error.message
+        });
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const totalCount = results.length;
+
+      return ctx.send({
+        success: true,
+        message: `Prueba de emails completada: ${successCount}/${totalCount} exitosos`,
+        results,
+        summary: {
+          total: totalCount,
+          successful: successCount,
+          failed: totalCount - successCount
+        }
+      });
+
+    } catch (error) {
+      console.error('Error testing refund emails:', error);
+      return ctx.internalServerError('Error al probar emails de reembolso: ' + error.message);
+    }
+  },
+
+  /**
    * Endpoint de prueba para verificar relaciones
    */
   async testRefundRelations(ctx) {

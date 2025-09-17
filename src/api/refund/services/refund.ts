@@ -870,11 +870,19 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
           
         case 'status_updated':
           // Notificar al cliente
-          await emailService.sendRefundStatusUpdateEmail(
+          console.log('📧 [sendRefundNotification] Enviando email de actualización de estado:', {
+            refundId: refund.id,
+            status: refund.refundStatus,
+            userEmail: refund.user?.email
+          });
+          
+          const emailSent = await emailService.sendRefundStatusUpdateEmail(
             refund,
             (refund as any).order,
             refund.user
           );
+          
+          console.log('📧 [sendRefundNotification] Resultado del envío de email:', emailSent);
           break;
           
         case 'completed':
