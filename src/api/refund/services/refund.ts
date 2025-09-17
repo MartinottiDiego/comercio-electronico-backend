@@ -590,22 +590,25 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
     const { storeId, status, page, limit } = params;
 
     try {
-      console.log('🔍 [getStoreRefunds] Parámetros recibidos:', { storeId, status, page, limit });
-
       // Simplificar: usar directamente el storeId como ID numérico
       let numericStoreId = storeId;
       if (typeof storeId === 'string' && !isNaN(parseInt(storeId))) {
         numericStoreId = parseInt(storeId);
       }
 
+      // ✅ CORREGIR FILTRO: Buscar por la tienda del producto, no por el campo store
       const baseFilters: any = {
-        store: numericStoreId
+        order: {
+          order_items: {
+            product: {
+              store: numericStoreId
+            }
+          }
+        }
       };
       if (status) {
         baseFilters.refundStatus = status;
       }
-
-      console.log('🔍 [getStoreRefunds] Buscando reembolsos con filtros:', baseFilters);
 
       const refunds = await strapi.entityService.findMany('api::refund.refund', {
         filters: baseFilters,
@@ -633,14 +636,6 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         limit: limit
       });
 
-      console.log('🔍 [getStoreRefunds] Reembolsos encontrados:', refunds.length);
-      if (refunds.length > 0) {
-        console.log('🔍 [getStoreRefunds] Primer reembolso:', {
-          id: refunds[0].id,
-          store: (refunds[0] as any).store,
-          storeId: (refunds[0] as any).store?.id
-        });
-      }
 
       return {
         data: refunds,
@@ -939,7 +934,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
               });
               
               if (storeOwner?.email) {
-                              await notificationService.createNotification({
+                await notificationService.createNotification({
                 type: 'refund_requested',
                 title: `🔄 Nueva Solicitud de Reembolso`,
                 message: `El usuario ${refund.user?.email} ha solicitado un reembolso de €${refund.amount} para el pedido #${(refund as any).order?.orderNumber}.`,
