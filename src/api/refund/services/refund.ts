@@ -459,16 +459,22 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
         }
       });
 
-      // Si el reembolso se completó, actualizar el estado del pago
+      // Si el reembolso se completó, actualizar el estado del pago y la orden
       if (updateData.refundStatus === 'completed') {
         try {
           const paymentId = (refund as any).payment?.id;
           if (paymentId) {
             await this.updatePaymentStatusToRefunded(paymentId);
+          }
 
+          // Actualizar el estado de la orden a 'refunded'
+          const orderId = (refund as any).order?.id;
+          if (orderId) {
+            await this.updateOrderStatusToRefunded(orderId);
           }
         } catch (paymentError) {
-          }
+          console.error('Error updating payment/order status:', paymentError);
+        }
       }
 
       // Enviar notificaciones por email y crear notificaciones en BD
@@ -998,6 +1004,37 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
 
     } catch (error) {
       console.error('Error updating payment status:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Actualizar el estado de la orden a refunded
+   */
+  async updateOrderStatusToRefunded(orderId: number) {
+    try {
+      if (!orderId) {
+        return;
+      }
+
+      // Verificar que la orden existe antes de actualizar
+      const existingOrder = await strapi.entityService.findOne('api::order.order', orderId);
+      if (!existingOrder) {
+        return;
+      }
+
+      // Actualizar el estado de la orden
+      const updatedOrder = await strapi.entityService.update('api::order.order', orderId, {
+        data: {
+          orderStatus: 'refunded',
+          notes: 'Orden reembolsada exitosamente'
+        }
+      });
+
+      return updatedOrder;
+
+    } catch (error) {
+      console.error('Error updating order status:', error);
       throw error;
     }
   }
