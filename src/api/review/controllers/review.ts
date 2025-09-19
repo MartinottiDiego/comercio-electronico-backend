@@ -140,13 +140,11 @@ export default factories.createCoreController('api::review.review', ({ strapi })
           });
           
         } catch (error) {
-          console.error('⚠️ Error actualizando estadísticas del producto:', error);
-        }
+          }
       }
       
       return result;
     } catch (error) {
-      console.error('❌ Error creando reseña:', error);
       throw error;
     }
   }

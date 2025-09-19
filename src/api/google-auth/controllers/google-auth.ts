@@ -92,16 +92,9 @@ async function uploadGoogleAvatar(imageUrl: string, email: string) {
     return uploadedFile;
     
   } catch (error) {
-    console.error('❌ Error subiendo avatar de Google:', error);
-    
     // Log detallado del error
     if (error instanceof Error) {
-      console.error('❌ Detalles del error:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-    }
+      }
     
     return null;
   }
@@ -196,16 +189,9 @@ async function uploadGoogleAvatarLocal(imageUrl: string, email: string) {
     return uploadedFile;
     
   } catch (error) {
-    console.error('❌ Error subiendo avatar de Google (método local):', error);
-    
     // Log detallado del error
     if (error instanceof Error) {
-      console.error('❌ Detalles del error:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-    }
+      }
     
     return null;
   }

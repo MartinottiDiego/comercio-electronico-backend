@@ -6,6 +6,16 @@ import { factories } from '@strapi/strapi';
 
 export default {
   routes: [
+    // Ruta personalizada para actualizar el estado de una orden (DEBE IR ANTES de las rutas estándar)
+    {
+      method: 'PUT',
+      path: '/orders/:documentId/status',
+      handler: 'order.updateOrderStatus',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
     // Ruta personalizada para obtener órdenes del usuario
     {
       method: 'GET',

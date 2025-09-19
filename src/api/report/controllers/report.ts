@@ -58,7 +58,6 @@ export default factories.createCoreController('api::report.report', ({ strapi })
       const page = parseInt(ctx.query.page as string) || 1;
       const pageSize = parseInt(ctx.query.pageSize as string) || 10;
 
-
       // El admin puede ver todos los informes, no solo los suyos
       const reports = await strapi.entityService.findMany('api::report.report', {
         sort: { createdAt: 'desc' },
@@ -181,7 +180,6 @@ export default factories.createCoreController('api::report.report', ({ strapi })
   async getStats(ctx) {
     try {
       const { user } = ctx.state;
-
 
       // El admin puede ver estadísticas de todos los informes
       const stats = await strapi.service('api::report.report').getReportStats();

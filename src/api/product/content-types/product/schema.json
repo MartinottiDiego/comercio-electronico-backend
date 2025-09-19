@@ -95,10 +95,6 @@
       "min": 0,
       "max": 5
     },
-    "brand": {
-      "type": "string",
-      "maxLength": 100
-    },
     "subcategory": {
       "type": "string"
     },

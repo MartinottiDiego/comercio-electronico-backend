@@ -33,6 +33,11 @@ export default {
       method: 'POST',
       path: '/notifications/sync',
       handler: 'api::notification.notification.sync'
+    },
+    {
+      method: 'PUT',
+      path: '/notifications/:id/mark-read',
+      handler: 'api::notification.notification.markAsRead'
     }
   ]
 };

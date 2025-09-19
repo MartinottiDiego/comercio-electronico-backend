@@ -127,5 +127,62 @@ export default {
         },
       },
     },
+    // ===== NUEVAS RUTAS PARA GESTIÓN DE TIENDA =====
+    {
+      method: 'GET',
+      path: '/stores/:id/products',
+      handler: 'store.getStoreProducts',
+      config: {
+        auth: false, // Sin autenticación por ahora
+        description: 'Obtiene productos de una tienda específica',
+        tag: {
+          plugin: 'store',
+          name: 'Store Products',
+          actionType: 'find',
+        },
+      },
+    },
+    {
+      method: 'GET',
+      path: '/stores/:id/orders',
+      handler: 'store.getStoreOrders',
+      config: {
+        auth: false, // Sin autenticación por ahora
+        description: 'Obtiene pedidos de una tienda específica',
+        tag: {
+          plugin: 'store',
+          name: 'Store Orders',
+          actionType: 'find',
+        },
+      },
+    },
+    {
+      method: 'GET',
+      path: '/stores/:id/analytics',
+      handler: 'store.getStoreAnalytics',
+      config: {
+        auth: false, // Sin autenticación por ahora
+        description: 'Obtiene analytics de una tienda específica',
+        tag: {
+          plugin: 'store',
+          name: 'Store Analytics',
+          actionType: 'find',
+        },
+      },
+    },
+    {
+      method: 'GET',
+      path: '/stores/:id/notifications',
+      handler: 'store.getStoreNotifications',
+      config: {
+        auth: false, // Sin autenticación por ahora
+        description: 'Obtiene notificaciones de una tienda específica',
+        tag: {
+          plugin: 'store',
+          name: 'Store Notifications',
+          actionType: 'find',
+        },
+      },
+    },
   ],
 };

@@ -415,8 +415,6 @@ export default {
 
       ctx.body = { received: true };
     } catch (error) {
-      console.error('❌ [WEBHOOK] Error in webhook:', error);
-      console.error('❌ [WEBHOOK] Error stack:', error.stack);
       ctx.throw(400, 'Webhook error');
     }
   },

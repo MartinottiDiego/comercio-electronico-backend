@@ -3,4 +3,3 @@ export default {
   controllers: require('./controllers/google-auth').default,
 };
 
-

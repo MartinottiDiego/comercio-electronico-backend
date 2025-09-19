@@ -160,5 +160,104 @@ export default factories.createCoreController('api::product.product', ({ strapi 
       console.error('Error in getFeaturedProducts:', error);
       ctx.internalServerError('Error getting featured products');
     }
+  },
+
+  /**
+   * Crear producto con variantes
+   */
+  async createWithVariants(ctx: any) {
+    try {
+      const { productData, variants } = ctx.request.body;
+
+      if (!productData) {
+        return ctx.badRequest('Datos del producto requeridos');
+      }
+
+      // Validar datos del producto
+      if (!productData.title || !productData.description || productData.price === undefined) {
+        return ctx.badRequest('Título, descripción y precio son requeridos');
+      }
+
+      // Si tiene variantes, validar que todas tengan los campos requeridos
+      if (variants && variants.length > 0) {
+        for (const variant of variants) {
+          if (!variant.sku || !variant.name || variant.price === undefined || variant.stock === undefined) {
+            return ctx.badRequest('Todas las variantes deben tener SKU, nombre, precio y stock');
+          }
+        }
+
+        // Validar SKUs únicos
+        const skus = variants.map((v: any) => v.sku);
+        const uniqueSkus = new Set(skus);
+        if (skus.length !== uniqueSkus.size) {
+          return ctx.badRequest('Los SKUs de las variantes deben ser únicos');
+        }
+      }
+
+      // Crear el producto con variantes usando el service
+      const result = await strapi.service('api::product.product').createProductWithVariants(
+        productData,
+        variants || []
+      );
+
+      return {
+        data: result,
+        message: 'Producto creado exitosamente'
+      };
+    } catch (error) {
+      console.error('Error creating product with variants:', error);
+      return ctx.internalServerError('Error interno creando producto con variantes');
+    }
+  },
+
+  /**
+   * Actualizar producto con variantes
+   */
+  async updateWithVariants(ctx: any) {
+    try {
+      const { id } = ctx.params;
+      const { productData, variants } = ctx.request.body;
+
+      if (!productData) {
+        return ctx.badRequest('Datos del producto requeridos');
+      }
+
+      // Verificar que el producto existe
+      const existingProduct = await strapi.entityService.findOne('api::product.product', id);
+      if (!existingProduct) {
+        return ctx.notFound('Producto no encontrado');
+      }
+
+      // Si tiene variantes, validar que todas tengan los campos requeridos
+      if (variants && variants.length > 0) {
+        for (const variant of variants) {
+          if (!variant.sku || !variant.name || variant.price === undefined || variant.stock === undefined) {
+            return ctx.badRequest('Todas las variantes deben tener SKU, nombre, precio y stock');
+          }
+        }
+
+        // Validar SKUs únicos
+        const skus = variants.map((v: any) => v.sku);
+        const uniqueSkus = new Set(skus);
+        if (skus.length !== uniqueSkus.size) {
+          return ctx.badRequest('Los SKUs de las variantes deben ser únicos');
+        }
+      }
+
+      // Actualizar el producto con variantes usando el service
+      const result = await strapi.service('api::product.product').updateProductWithVariants(
+        id,
+        productData,
+        variants || []
+      );
+
+      return {
+        data: result,
+        message: 'Producto actualizado exitosamente'
+      };
+    } catch (error) {
+      console.error('Error updating product with variants:', error);
+      return ctx.internalServerError('Error interno actualizando producto con variantes');
+    }
   }
 }));

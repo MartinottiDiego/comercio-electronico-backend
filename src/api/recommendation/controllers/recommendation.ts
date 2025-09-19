@@ -411,7 +411,6 @@ export default ({ strapi }: { strapi: any }) => ({
         return null;
       }
 
-
       // Crear recomendaciones básicas
       const recommendations = products.map((product, index) => {
         const imageUrl = product.thumbnail?.url || product.Media?.url || null;

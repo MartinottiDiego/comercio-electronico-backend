@@ -55,7 +55,6 @@ export class InsightsNotificationService {
 
     try {
 
-
       // Enviar notificación push
       if (this.config.pushNotifications) {
         await this.sendPushNotification(insight);
@@ -71,11 +70,8 @@ export class InsightsNotificationService {
         await this.sendWebhookNotification(insight);
       }
 
-
-
     } catch (error) {
-      console.error(`❌ [INSIGHTS NOTIFICATIONS] Error enviando notificaciones:`, error);
-    }
+      }
   }
 
   /**
@@ -114,15 +110,11 @@ export class InsightsNotificationService {
         try {
           await this.pushService.sendPushNotification(subscription, notificationData);
         } catch (error) {
-          console.error(`❌ [INSIGHTS NOTIFICATIONS] Error enviando push a suscripción ${subscription.endpoint}:`, error);
-        }
+          }
       }
 
-
-
     } catch (error) {
-      console.error('❌ [INSIGHTS NOTIFICATIONS] Error en push notifications:', error);
-    }
+      }
   }
 
   /**
@@ -147,12 +139,9 @@ export class InsightsNotificationService {
 
       // Enviar email usando el servicio existente
       await strapi.plugins['email'].services.email.send(emailData);
-      
-
 
     } catch (error) {
-      console.error('❌ [INSIGHTS NOTIFICATIONS] Error enviando email:', error);
-    }
+      }
   }
 
   /**
@@ -192,11 +181,8 @@ export class InsightsNotificationService {
         throw new Error(`Webhook responded with status ${response.status}`);
       }
 
-
-
     } catch (error) {
-      console.error('❌ [INSIGHTS NOTIFICATIONS] Error enviando webhook:', error);
-    }
+      }
   }
 
   /**
@@ -240,7 +226,6 @@ export class InsightsNotificationService {
       const emails = users
         .map(user => user.email)
         .filter(Boolean);
-
 
       return emails;
 

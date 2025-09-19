@@ -36,6 +36,8 @@ export class EmailService {
           user: 'resend',
           pass: process.env.RESEND_API_KEY,
         },
+        encoding: 'utf8',
+        charset: 'utf-8'
       });
     } else {
       // Usar SMTP tradicional (Gmail configurado)
@@ -51,11 +53,11 @@ export class EmailService {
           rejectUnauthorized: false,
           ciphers: 'SSLv3'
         },
+        encoding: 'utf8',
+        charset: 'utf-8',
         debug: process.env.NODE_ENV === 'development', // Habilitar debug en desarrollo
         logger: process.env.NODE_ENV === 'development' // Habilitar logs en desarrollo
       };
-
-      
 
       this.transporter = require('nodemailer').createTransport(smtpConfig);
     }
@@ -79,8 +81,6 @@ export class EmailService {
 
       // Añadir información del remitente
       const fromEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@waazaar.com';
-      
-      
 
       const info = await this.transporter.sendMail({
         ...emailData,
@@ -88,18 +88,8 @@ export class EmailService {
         replyTo: fromEmail
       });
 
-      
-
       return true;
     } catch (error) {
-      console.error('❌ Error enviando email:', {
-        error: error.message,
-        code: error.code,
-        command: error.command,
-        to: notification.recipientEmail,
-        subject: notification.title
-      });
-      
       // Log detallado del error
       if (error.response) {
         console.error('📧 Respuesta del servidor SMTP:', error.response);
@@ -333,9 +323,19 @@ Sistema de notificaciones automáticas
    * Enviar email para actualización de estado de reembolso (para cliente)
    */
   async sendRefundStatusUpdateEmail(refund: any, order: any, customer: any): Promise<boolean> {
+    
+    // Obtener el motivo de rechazo del historial de estados
+    let rejectionReason = '';
+    if (refund.refundStatus === 'rejected' && refund.metadata?.statusHistory) {
+      const latestStatus = refund.metadata.statusHistory[refund.metadata.statusHistory.length - 1];
+      if (latestStatus?.comment) {
+        rejectionReason = latestStatus.comment;
+      }
+    }
+    
     const statusMessages = {
       'completed': `¡Excelente noticia! Tu reembolso de €${refund.amount} ha sido procesado exitosamente.`,
-      'rejected': `Lamentablemente, tu solicitud de reembolso ha sido rechazada por la tienda.`,
+      'rejected': `Lamentablemente, tu solicitud de reembolso ha sido rechazada por la tienda.${rejectionReason ? `\n\nMotivo del rechazo: ${rejectionReason}` : ''}`,
       'processing': `Tu solicitud de reembolso ha sido aprobada y está siendo procesada.`,
       'failed': `Hubo un problema al procesar tu reembolso. Contactaremos contigo pronto.`
     };
@@ -347,8 +347,8 @@ Sistema de notificaciones automáticas
       'failed': '⚠️'
     };
 
-    const emoji = statusEmojis[refund.status] || 'ℹ️';
-    const message = statusMessages[refund.status] || `Tu reembolso ha cambiado a estado: ${refund.status}`;
+    const emoji = statusEmojis[refund.refundStatus] || 'ℹ️';
+    const message = statusMessages[refund.refundStatus] || `Tu reembolso ha cambiado a estado: ${refund.refundStatus}`;
     
     const notification = {
       recipientEmail: customer.email,
@@ -356,10 +356,12 @@ Sistema de notificaciones automáticas
       message: message,
       actionUrl: `/historial-compras`,
       actionText: 'Ver Historial',
-      priority: refund.status === 'completed' ? 'high' : 'normal'
+      priority: refund.refundStatus === 'completed' ? 'high' : 'normal'
     };
     
-    return this.sendNotificationEmail(notification);
+    const result = await this.sendNotificationEmail(notification);
+    
+    return result;
   }
 
   /**
@@ -423,20 +425,16 @@ Sistema de notificaciones automáticas
         });
 
         if (error) {
-          console.error('❌ Error enviando email con Resend:', error);
           return false;
         }
 
-        console.log('✅ Email enviado exitosamente con Resend:', data?.id);
         return true;
       } else {
         // Usar SMTP tradicional
         const info = await this.transporter.sendMail(mailOptions);
-        console.log('✅ Email enviado exitosamente:', info.messageId);
         return true;
       }
     } catch (error) {
-      console.error('❌ Error enviando email personalizado:', error);
       return false;
     }
   }
@@ -481,7 +479,6 @@ Sistema de notificaciones automáticas
           const store = data.order?.order_items?.[0]?.product?.store;
           
           if (!store || !store.owner) {
-            console.error('❌ No se pudo obtener la tienda o su owner');
             return false;
           }
           
@@ -491,7 +488,6 @@ Sistema de notificaciones automáticas
           });
           
           if (!storeOwner || !storeOwner.email) {
-            console.error('❌ No se pudo obtener el email del owner de la tienda');
             return false;
           }
           
@@ -514,7 +510,6 @@ Sistema de notificaciones automáticas
           return this.sendNotificationEmail(notification);
       }
     } catch (error) {
-      console.error('❌ Error enviando email de reembolso:', error);
       return false;
     }
   }

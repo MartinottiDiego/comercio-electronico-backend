@@ -67,7 +67,6 @@ export default factories.createCoreService('api::payment.payment', ({ strapi }) 
       });
       return payment;
     } catch (error) {
-      console.error('❌ [Payment Service] Error creating payment with Stripe data:', error);
       throw error;
     }
   }

@@ -33,7 +33,8 @@
         "new_sale",
         "store_rejection",
         "store_approval",
-        "store_blocked"
+        "store_blocked",
+        "store_pending"
       ]
     },
     "title": {
