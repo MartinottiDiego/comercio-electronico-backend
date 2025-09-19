@@ -32,6 +32,19 @@ export default {
         middlewares: [],
       },
     },
+    // Ruta personalizada para obtener productos comprados pendientes de review
+    {
+      method: 'GET',
+      path: '/orders/purchased-products-pending-reviews',
+      handler: 'order.getPurchasedProductsPendingReviews',
+      config: {
+        auth: {
+          scope: ['authenticated']
+        },
+        policies: [],
+        middlewares: [],
+      },
+    },
     // Rutas estándar de Strapi
     {
       method: 'GET',
