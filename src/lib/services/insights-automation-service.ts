@@ -167,8 +167,8 @@ export class InsightsAutomationService {
         scope: 'store',
         targetType: 'store',
         conditions: {
-          lowStockThreshold: 10,
-          criticalStockThreshold: 5
+          lowStockThreshold: parseInt(process.env.LOW_STOCK_THRESHOLD || '10'),
+          criticalStockThreshold: parseInt(process.env.CRITICAL_STOCK_THRESHOLD || '5')
         }
       }
     ];

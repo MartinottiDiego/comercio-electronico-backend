@@ -152,14 +152,18 @@ export default factories.createCoreService('api::stock-alert.stock-alert', ({ st
    */
   async getStoreStockThreshold(storeId) {
     try {
-      // Por ahora, usar umbrales por defecto
-      // En el futuro, esto podría venir de configuración de la tienda
+      // Usar variables de entorno para configuración de umbrales
+      // En el futuro, esto podría venir de configuración específica de la tienda
       return {
-        low: 10,
-        critical: 5
+        low: strapi.config.get('server.env.LOW_STOCK_THRESHOLD', 10),
+        critical: strapi.config.get('server.env.CRITICAL_STOCK_THRESHOLD', 5)
       };
     } catch (error) {
-      return { low: 10, critical: 5 };
+      // Fallback a valores por defecto en caso de error
+      return { 
+        low: parseInt(process.env.LOW_STOCK_THRESHOLD || '10'), 
+        critical: parseInt(process.env.CRITICAL_STOCK_THRESHOLD || '5') 
+      };
     }
   },
 

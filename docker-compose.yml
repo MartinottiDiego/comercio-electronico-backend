@@ -55,6 +55,10 @@ services:
       # Stripe Configuration
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      
+      # Stock Thresholds Configuration
+      LOW_STOCK_THRESHOLD: ${LOW_STOCK_THRESHOLD:-10}
+      CRITICAL_STOCK_THRESHOLD: ${CRITICAL_STOCK_THRESHOLD:-5}
     
     volumes:
       # Volúmenes para desarrollo con hot-reload
