@@ -279,7 +279,7 @@ Sistema de notificaciones automáticas
       recipientEmail: customer.email,
       title: `🔄 Solicitud de Reembolso Confirmada - Pedido #${order.orderNumber}`,
       message: `Hola ${customerName}, hemos recibido tu solicitud de reembolso de €${refund.amount} para el producto "${productName}" de ${storeName}. Tu solicitud está siendo revisada por la tienda y pronto recibirás una notificación sobre el estado. Motivo: ${this.getReasonLabel(refund.reason)}.`,
-      actionUrl: `/historial-compras`,
+      actionUrl: `/mi-espacio?section=compras`,
       actionText: 'Ver Historial',
       priority: 'normal'
     };
@@ -354,7 +354,7 @@ Sistema de notificaciones automáticas
       recipientEmail: customer.email,
       title: `${emoji} Actualización de Reembolso - Pedido #${order.orderNumber}`,
       message: message,
-      actionUrl: `/historial-compras`,
+      actionUrl: `/mi-espacio?section=compras`,
       actionText: 'Ver Historial',
       priority: refund.refundStatus === 'completed' ? 'high' : 'normal'
     };
@@ -372,7 +372,7 @@ Sistema de notificaciones automáticas
       recipientEmail: customer.email,
       title: `✅ ¡Reembolso Completado! - Pedido #${order.orderNumber}`,
       message: `Tu reembolso de €${refund.amount} ha sido procesado exitosamente. El dinero será devuelto a tu método de pago original en un plazo de 3-5 días hábiles.`,
-      actionUrl: `/historial-compras`,
+      actionUrl: `/mi-espacio?section=compras`,
       actionText: 'Ver Detalles',
       priority: 'high'
     };

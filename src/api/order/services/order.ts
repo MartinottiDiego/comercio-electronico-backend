@@ -161,7 +161,7 @@ export default factories.createCoreService('api::order.order', ({ strapi }) => (
         priority: notificationConfig.priority,
         recipientEmail: buyer.email,
         recipientRole: 'comprador',
-        actionUrl: `/historial-compras#${order.id}`,
+        actionUrl: `/mi-espacio?section=compras#${order.id}`,
         actionText: 'Ver pedido',
         metadata: {
           orderId: order.id,
@@ -233,7 +233,7 @@ export default factories.createCoreService('api::order.order', ({ strapi }) => (
         priority: 'high',
         recipientEmail: buyer.email,
         recipientRole: 'comprador',
-        actionUrl: `/historial-compras#${order.id}`,
+        actionUrl: `/mi-espacio?section=compras#${order.id}`,
         actionText: 'Ver pedido',
         metadata: {
           orderId: order.id,

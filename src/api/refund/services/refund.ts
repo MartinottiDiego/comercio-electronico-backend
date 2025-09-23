@@ -869,7 +869,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
             message: `Has solicitado un reembolso de €${refund.amount} para el pedido #${(refund as any).order?.orderNumber}. Tu solicitud está siendo revisada.`,
             recipientEmail: refund.user?.email,
             recipientRole: 'comprador',
-            actionUrl: `/historial-compras`,
+            actionUrl: `/mi-espacio?section=compras`,
             actionText: 'Ver Historial',
             priority: 'normal'
           });
@@ -921,7 +921,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
             message: statusMessages[refund.refundStatus] || `Tu reembolso ha cambiado a estado: ${refund.refundStatus}`,
             recipientEmail: refund.user?.email,
             recipientRole: 'comprador',
-            actionUrl: `/historial-compras`,
+            actionUrl: `/mi-espacio?section=compras`,
             actionText: 'Ver Historial',
             priority: refund.refundStatus === 'completed' ? 'high' : 'normal'
           });
@@ -935,7 +935,7 @@ export default factories.createCoreService('api::refund.refund', ({ strapi }) =>
             message: `Tu reembolso de €${refund.amount} ha sido procesado exitosamente. El dinero será devuelto en 3-5 días hábiles.`,
             recipientEmail: refund.user?.email,
             recipientRole: 'comprador',
-            actionUrl: `/historial-compras`,
+            actionUrl: `/mi-espacio?section=compras`,
             actionText: 'Ver Detalles',
             priority: 'high'
           });
