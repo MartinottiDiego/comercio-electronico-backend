@@ -184,5 +184,19 @@ export default {
         },
       },
     },
+    {
+      method: 'GET',
+      path: '/stores/:id/reviews',
+      handler: 'store.getStoreReviews',
+      config: {
+        auth: false, // Sin autenticación por ahora
+        description: 'Obtiene reseñas de productos de una tienda específica',
+        tag: {
+          plugin: 'store',
+          name: 'Store Reviews',
+          actionType: 'find',
+        },
+      },
+    },
   ],
 };

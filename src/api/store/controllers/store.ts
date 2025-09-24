@@ -1081,4 +1081,64 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       return ctx.internalServerError('Error obteniendo notificaciones de la tienda');
     }
   },
+
+  // Obtener reseñas de productos de una tienda específica
+  async getStoreReviews(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { page = 1, pageSize = 25, sortBy = 'createdAt', sortOrder = 'desc' } = ctx.query;
+
+      if (!id) {
+        return ctx.badRequest('ID de tienda requerido');
+      }
+
+      // Verificar que la tienda existe
+      const store = await strapi.entityService.findOne('api::store.store', id);
+      if (!store) {
+        return ctx.notFound('Tienda no encontrada');
+      }
+
+      // Construir filtros para obtener reseñas de productos de esta tienda
+      const filters: any = {
+        product: {
+          store: id
+        }
+      };
+
+      // Construir ordenamiento
+      const sort: any = {};
+      sort[sortBy as string] = sortOrder === 'asc' ? 'asc' : 'desc';
+
+      // Obtener reseñas con paginación
+      const reviews = await strapi.entityService.findMany('api::review.review', {
+        filters,
+        sort,
+        populate: ['product'],
+        pagination: {
+          page: parseInt(page as string),
+          pageSize: parseInt(pageSize as string)
+        }
+      });
+
+      // Obtener total para paginación
+      const total = await strapi.db.query('api::review.review').count({
+        where: filters
+      });
+
+      return {
+        data: reviews,
+        meta: {
+          pagination: {
+            page: parseInt(page as string),
+            pageSize: parseInt(pageSize as string),
+            pageCount: Math.ceil(total / parseInt(pageSize as string)),
+            total
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error obteniendo reseñas de tienda:', error);
+      return ctx.internalServerError('Error obteniendo reseñas de la tienda');
+    }
+  },
 }));
