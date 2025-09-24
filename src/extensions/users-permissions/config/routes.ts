@@ -67,6 +67,16 @@ export default (plugin: StrapiPlugin) => {
         policies: [],
         middlewares: []
       }
+    },
+    {
+      method: 'PUT',
+      path: '/users/:id',
+      handler: 'user.delete',
+      config: {
+        auth: true,
+        policies: [],
+        middlewares: []
+      }
     }
   ];
 

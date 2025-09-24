@@ -227,7 +227,6 @@ export default {
       });
       
       if (user) {
-        
         // Procesar avatar de Google si se proporciona
         let uploadedAvatar = null;
         if (avatar) {
