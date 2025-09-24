@@ -320,8 +320,8 @@ export default {
         throw new Error('Failed to create payment record');
       }
       
-      // Actualizar estado de la orden usando el servicio (para triggers de notificaciones)
-      await strapi.service('api::order.order').updateOrderStatus(order.id, 'confirmed');
+      // NO actualizar automáticamente a 'confirmed' - dejar que la tienda lo confirme manualmente
+      // El estado 'pending' es correcto hasta que la tienda confirme el pedido
       
       // Actualizar también el estado de pago
       await strapi.entityService.update('api::order.order', order.id, {

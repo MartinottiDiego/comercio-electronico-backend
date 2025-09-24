@@ -585,7 +585,7 @@ export default {
       // Procesar pago exitoso
       const orderId = paymentIntent.metadata?.orderId;
       if (orderId) {
-        await strapi.service('api::order.order').updateOrderStatus(orderId, 'confirmed');
+        // NO cambiar automáticamente a 'confirmed' - el pedido debe permanecer 'pending' hasta confirmación manual
         await strapi.service('api::payment.payment').updatePaymentStatus(orderId, 'completed');
       }
     } catch (error) {
@@ -611,7 +611,8 @@ export default {
       // Procesar factura pagada
       const orderId = invoice.metadata?.orderId;
       if (orderId) {
-        await strapi.service('api::order.order').updateOrderStatus(orderId, 'confirmed');
+        // NO cambiar automáticamente a 'confirmed' - el pedido debe permanecer 'pending' hasta confirmación manual
+        // Solo actualizar el estado de pago si es necesario
       }
     } catch (error) {
       console.error('Error handling invoice payment succeeded:', error);
