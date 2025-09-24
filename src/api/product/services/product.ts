@@ -129,6 +129,73 @@ export default factories.createCoreService('api::product.product', ({ strapi }) 
     }
   },
 
+  /**
+   * Actualizar stock de un producto por compra/reembolso
+   */
+  async updateProductStockByTransaction(productId: string | number, quantityChange: number, operation: 'decrease' | 'increase' = 'decrease'): Promise<{ success: boolean; newStock?: number; error?: string }> {
+    try {
+      // Buscar producto por documentId primero, luego por id
+      let product = null;
+      
+      if (typeof productId === 'string' && productId.length > 10) {
+        // Es un documentId
+        const productsByDocumentId = await strapi.db.query('api::product.product').findMany({
+          where: { documentId: productId },
+          limit: 1
+        });
+        
+        if (productsByDocumentId.length > 0) {
+          product = productsByDocumentId[0];
+        }
+      }
+      
+      if (!product) {
+        // Buscar por id numérico
+        product = await strapi.entityService.findOne('api::product.product', productId);
+      }
+      
+      if (!product) {
+        return {
+          success: false,
+          error: 'Producto no encontrado'
+        };
+      }
+      
+      const currentStock = product.stock || 0;
+      let newStock: number;
+      
+      if (operation === 'decrease') {
+        newStock = currentStock - quantityChange;
+        if (newStock < 0) {
+          return {
+            success: false,
+            error: `Stock insuficiente. Disponible: ${currentStock}, Solicitado: ${quantityChange}`
+          };
+        }
+      } else {
+        newStock = currentStock + quantityChange;
+      }
+      
+      // Actualizar el stock del producto
+      await strapi.entityService.update('api::product.product', product.id, {
+        data: { stock: newStock }
+      });
+      
+      console.log(`Stock actualizado para producto ${productId}: ${currentStock} -> ${newStock} (${operation} ${quantityChange})`);
+      
+      return {
+        success: true,
+        newStock: newStock
+      };
+    } catch (error) {
+      console.error('Error actualizando stock:', error);
+      return {
+        success: false,
+        error: 'Error interno actualizando stock'
+      };
+    }
+  },
+
   async releaseStockReservation(reservationId: string): Promise<void> {
     try {
       const reservation = await strapi.entityService.findOne('api::stock-reservation.stock-reservation', reservationId);

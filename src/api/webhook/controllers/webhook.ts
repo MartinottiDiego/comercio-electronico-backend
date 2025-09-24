@@ -267,7 +267,25 @@ export default {
           continue;
         }
         
-        // 9. Actualizar reservas de stock si existen
+        // 9. Actualizar stock del producto
+        try {
+          const stockUpdate = await strapi.service('api::product.product').updateProductStockByTransaction(
+            productId,
+            item.quantity,
+            'decrease'
+          );
+          
+          if (!stockUpdate.success) {
+            console.error(`Error actualizando stock para producto ${productId}:`, stockUpdate.error);
+            // Continuar con el procesamiento aunque falle la actualización de stock
+          } else {
+            console.log(`Stock actualizado exitosamente para producto ${productId}: ${stockUpdate.newStock} unidades`);
+          }
+        } catch (error) {
+          console.error('Error en actualización de stock:', error);
+        }
+
+        // 10. Actualizar reservas de stock si existen
         const reservationId = productMappingItem.reservationId;
         if (reservationId) {
           try {
@@ -285,7 +303,7 @@ export default {
             }
         }
         
-        // 10. Crear order item
+        // 11. Crear order item
         const orderItemData = {
           order: order.id,
           product: productId,
@@ -512,11 +530,44 @@ export default {
             }
           },
           populate: {
-            order: { populate: { user: true } },
+            order: { 
+              populate: { 
+                user: true,
+                order_items: {
+                  populate: {
+                    product: true
+                  }
+                }
+              } 
+            },
             payment: true,
             user: true
           }
         });
+        
+        // Restaurar stock de los productos reembolsados
+        try {
+          const refundWithOrder = updatedRefund as any;
+          if (refundWithOrder.order && refundWithOrder.order.order_items) {
+            for (const orderItem of refundWithOrder.order.order_items) {
+              if (orderItem.product && orderItem.quantity) {
+                const stockRestore = await strapi.service('api::product.product').updateProductStockByTransaction(
+                  orderItem.product.documentId || orderItem.product.id,
+                  orderItem.quantity,
+                  'increase'
+                );
+                
+                if (stockRestore.success) {
+                  console.log(`Stock restaurado para producto ${orderItem.product.documentId || orderItem.product.id}: +${orderItem.quantity} unidades`);
+                } else {
+                  console.error(`Error restaurando stock para producto ${orderItem.product.documentId || orderItem.product.id}:`, stockRestore.error);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error restaurando stock durante reembolso:', error);
+        }
         
         // Crear notificación de reembolso completado
         try {
